@@ -1,100 +1,101 @@
 import axios from 'axios';
-import dotenv from 'dotenv';
 import { getCache, setCache } from '../utils/cache.js';
 
-dotenv.config();
-
-const GENIUS_ACCESS_TOKEN = process.env.GENIUS_ACCESS_TOKEN;
 const BASE_URL = 'https://api.genius.com';
 
-export async function searchArtist(name) {
-  const cacheKey = `genius:search:${name}`;
-  const cached = getCache(cacheKey);
-  if (cached) return cached;
-  
-  if (!GENIUS_ACCESS_TOKEN) {
-    console.warn('Genius API token not configured');
-    return null;
-  }
-  
-  try {
-    const response = await axios.get(`${BASE_URL}/search`, {
-      params: { q: name },
-      headers: {
-        'Authorization': `Bearer ${GENIUS_ACCESS_TOKEN}`
-      },
-      timeout: 10000
-    });
-    
-    const hits = response.data.response.hits;
-    const artistHit = hits.find(hit => hit.type === 'song' && hit.result.primary_artist.name.toLowerCase() === name.toLowerCase());
-    
-    if (artistHit) {
-      setCache(cacheKey, artistHit.result.primary_artist, 1800);
-      return artistHit.result.primary_artist;
-    }
-    
-    // Return first artist found
-    if (hits.length > 0 && hits[0].result.primary_artist) {
-      const artist = hits[0].result.primary_artist;
-      setCache(cacheKey, artist, 1800);
-      return artist;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Error searching artist on Genius:', error.message);
-    return null;
-  }
+function getToken() {
+  const token = process.env.GENIUS_ACCESS_TOKEN;
+  if (!token) return null;
+  const trimmed = token.trim();
+  if (!trimmed || /^(your_|tu_|change|example|placeholder|xxx)/i.test(trimmed)) return null;
+  return trimmed;
 }
 
-export async function getArtistDetails(artistId) {
-  const cacheKey = `genius:artist:${artistId}`;
-  const cached = getCache(cacheKey);
-  if (cached) return cached;
-  
-  if (!GENIUS_ACCESS_TOKEN) {
-    return null;
-  }
-  
-  try {
-    const response = await axios.get(`${BASE_URL}/artists/${artistId}`, {
-      headers: {
-        'Authorization': `Bearer ${GENIUS_ACCESS_TOKEN}`
-      },
-      timeout: 10000
-    });
-    
-    setCache(cacheKey, response.data.response.artist, 1800);
-    return response.data.response.artist;
-  } catch (error) {
-    console.error('Error getting artist details from Genius:', error.message);
-    return null;
-  }
+export function isGeniusConfigured() {
+  return Boolean(getToken());
 }
 
-export async function getArtistSongs(artistId, sort = 'popularity', limit = 20) {
-  const cacheKey = `genius:artist-songs:${artistId}:${sort}:${limit}`;
+function stripHtml(value = '') {
+  return value
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeArtist(artist) {
+  if (!artist) return null;
+  return {
+    id: artist.id,
+    name: artist.name,
+    url: artist.url || null,
+    image: artist.image_url || null,
+    description: stripHtml(artist.description?.dom || ''),
+    followers: artist.followers_count ?? null
+  };
+}
+
+export async function findArtist(name) {
+  if (!name || !name.trim()) return { artist: null, error: null };
+
+  const cacheKey = `genius:find:${name.toLowerCase()}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
-  
-  if (!GENIUS_ACCESS_TOKEN) {
-    return [];
+
+  const token = getToken();
+  if (!token) {
+    return {
+      artist: null,
+      error: {
+        code: 'MISSING_KEY',
+        message: 'Genius no está configurado. Añade GENIUS_ACCESS_TOKEN para ver la biografía del artista.'
+      }
+    };
   }
-  
+
   try {
-    const response = await axios.get(`${BASE_URL}/artists/${artistId}/songs`, {
-      params: { sort, per_page: limit },
-      headers: {
-        'Authorization': `Bearer ${GENIUS_ACCESS_TOKEN}`
-      },
+    const searchResponse = await axios.get(`${BASE_URL}/search`, {
+      params: { q: name.trim() },
+      headers: { Authorization: `Bearer ${token}` },
       timeout: 10000
     });
-    
-    setCache(cacheKey, response.data.response.songs, 1800);
-    return response.data.response.songs;
+
+    const hits = searchResponse.data?.response?.hits || [];
+    const hit = hits.find(
+      (item) => item?.result?.primary_artist?.name?.toLowerCase() === name.trim().toLowerCase()
+    ) || hits.find((item) => item?.result?.primary_artist);
+
+    const primaryArtist = hit?.result?.primary_artist || null;
+    if (!primaryArtist?.id) {
+      const empty = { artist: null, error: null };
+      setCache(cacheKey, empty, 600);
+      return empty;
+    }
+
+    const detailsResponse = await axios.get(`${BASE_URL}/artists/${primaryArtist.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 10000
+    });
+
+    const artist = normalizeArtist(detailsResponse.data?.response?.artist || primaryArtist);
+    const result = { artist, error: null };
+    setCache(cacheKey, result, 1800);
+    return result;
   } catch (error) {
-    console.error('Error getting artist songs from Genius:', error.message);
-    return [];
+    const status = error.response?.status;
+    return {
+      artist: null,
+      error: {
+        code: status === 401 || status === 403 ? 'GENIUS_AUTH_ERROR' : 'GENIUS_ERROR',
+        status: status || null,
+        message: status === 401 || status === 403
+          ? 'Genius rechazó el token configurado.'
+          : 'No se pudo consultar Genius.'
+      }
+    };
   }
 }

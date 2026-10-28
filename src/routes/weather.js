@@ -4,26 +4,20 @@ import { getForecast, getWeatherAdvice } from '../services/openweather.js';
 const router = express.Router();
 
 router.get('/', async (req, res) => {
-  try {
-    const { lat, lng } = req.query;
-    
-    if (!lat || !lng) {
-      return res.status(400).json({ error: 'lat and lng are required' });
-    }
-    
-    const forecast = await getForecast(lat, lng);
-    
-    // Get advice for current/next weather
-    if (forecast.list && forecast.list.length > 0) {
-      const advice = getWeatherAdvice(forecast.list[0]);
-      forecast.advice = advice;
-    }
-    
-    res.json(forecast);
-  } catch (error) {
-    console.error('Error in weather route:', error);
-    res.status(500).json({ error: 'Failed to fetch weather' });
+  const { lat, lng } = req.query;
+
+  if (!lat || !lng) {
+    return res.status(400).json({ list: [], error: { code: 'BAD_REQUEST', message: 'lat y lng son obligatorios.' } });
   }
+
+  const forecast = await getForecast(lat, lng);
+
+  if (forecast.error) {
+    return res.json({ ...forecast, advice: null });
+  }
+
+  const advice = forecast.list?.length ? getWeatherAdvice(forecast.list[0]) : null;
+  res.json({ ...forecast, advice });
 });
 
 export default router;

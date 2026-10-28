@@ -1,148 +1,118 @@
 import axios from 'axios';
-import dotenv from 'dotenv';
 import { getCache, setCache } from '../utils/cache.js';
 
-dotenv.config();
-
-const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
+function getKey() {
+  const key = process.env.OPENWEATHER_API_KEY;
+  if (!key) return null;
+  const trimmed = key.trim();
+  if (!trimmed || /^(your_|tu_|change|example|placeholder|xxx)/i.test(trimmed)) return null;
+  return trimmed;
+}
+
+export function isOpenWeatherConfigured() {
+  return Boolean(getKey());
+}
+
+function emptyForecast(error) {
+  return { list: [], city: null, source: 'openweather', error };
+}
+
 export async function getForecast(lat, lng) {
-  const cacheKey = `weather:forecast:${lat},${lng}`;
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return emptyForecast({ code: 'BAD_REQUEST', message: 'Las coordenadas del recinto no son válidas.' });
+  }
+
+  const cacheKey = `weather:forecast:${latitude},${longitude}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
-  
-  if (!OPENWEATHER_API_KEY) {
-    console.warn('OpenWeather API key not configured, using demo weather');
-    return getDemoWeather();
+
+  const key = getKey();
+  if (!key) {
+    return emptyForecast({
+      code: 'MISSING_KEY',
+      message: 'OpenWeatherMap no está configurado. Añade OPENWEATHER_API_KEY para ver el pronóstico.'
+    });
   }
-  
+
   try {
     const response = await axios.get(`${BASE_URL}/forecast`, {
       params: {
-        lat,
-        lon: lng,
-        appid: OPENWEATHER_API_KEY,
+        lat: latitude,
+        lon: longitude,
+        appid: key,
         units: 'metric',
         lang: 'es'
       },
       timeout: 10000
     });
-    
-    setCache(cacheKey, response.data, 600);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching weather:', error.message);
-    return getDemoWeather();
-  }
-}
 
-export async function getCurrentWeather(lat, lng) {
-  const cacheKey = `weather:current:${lat},${lng}`;
-  const cached = getCache(cacheKey);
-  if (cached) return cached;
-  
-  if (!OPENWEATHER_API_KEY) {
-    return getDemoWeather().list[0];
-  }
-  
-  try {
-    const response = await axios.get(`${BASE_URL}/weather`, {
-      params: {
-        lat,
-        lon: lng,
-        appid: OPENWEATHER_API_KEY,
-        units: 'metric',
-        lang: 'es'
-      },
-      timeout: 10000
-    });
-    
-    setCache(cacheKey, response.data, 600);
-    return response.data;
+    const result = {
+      ...response.data,
+      source: 'openweather',
+      error: null
+    };
+    setCache(cacheKey, result, 600);
+    return result;
   } catch (error) {
-    console.error('Error fetching current weather:', error.message);
-    return getDemoWeather().list[0];
-  }
-}
-
-function getDemoWeather() {
-  const now = Date.now();
-  const list = [];
-  
-  for (let i = 0; i < 40; i++) {
-    const dt = Math.floor((now + i * 3 * 3600 * 1000) / 1000);
-    list.push({
-      dt,
-      main: {
-        temp: 20 + Math.sin(i / 8) * 5,
-        feels_like: 19 + Math.sin(i / 8) * 5,
-        temp_min: 15,
-        temp_max: 25,
-        humidity: 65 + Math.random() * 10
-      },
-      weather: [{
-        id: i % 3 === 0 ? 800 : 801,
-        main: i % 3 === 0 ? 'Clear' : 'Clouds',
-        description: i % 3 === 0 ? 'cielo despejado' : 'parcialmente nublado',
-        icon: i % 3 === 0 ? '01d' : '02d'
-      }],
-      wind: {
-        speed: 3 + Math.random() * 5
-      },
-      pop: i % 4 === 0 ? 0.3 : 0
+    const status = error.response?.status;
+    return emptyForecast({
+      code: status === 401 || status === 403 ? 'INVALID_KEY' : 'UPSTREAM_ERROR',
+      status: status || null,
+      message: status === 401 || status === 403
+        ? 'OpenWeatherMap rechazó la API key configurada.'
+        : 'No se pudo cargar el pronóstico desde OpenWeatherMap.'
     });
   }
-  
-  return {
-    list,
-    city: {
-      name: 'Barcelona',
-      coord: { lat: 41.3851, lon: 2.1734 }
-    }
-  };
 }
 
 export function getWeatherAdvice(weather) {
-  const temp = weather.main?.temp || 20;
-  const pop = weather.pop || 0;
-  const description = weather.weather?.[0]?.description || '';
-  
-  if (pop > 0.3 || description.includes('lluvia')) {
+  if (!weather) {
+    return { type: 'unknown', message: 'Sin datos suficientes para generar recomendaciones.', checklist: [] };
+  }
+
+  const temp = Number(weather.main?.temp);
+  const pop = Number(weather.pop) || 0;
+  const description = (weather.weather?.[0]?.description || '').toLowerCase();
+
+  if (pop > 0.3 || description.includes('lluvia') || description.includes('tormenta')) {
     return {
       type: 'rain',
-      message: 'Lluvia prevista: llevar impermeable',
-      checklist: ['Impermeable/Chubasquero', 'Botas impermeables', 'Bolsa para ropa húmeda']
+      message: 'Lluvia prevista: lleva impermeable y protege tus dispositivos.',
+      checklist: ['Impermeable o chubasquero', 'Calzado impermeable', 'Bolsa para ropa húmeda']
     };
   }
-  
-  if (temp < 12) {
+
+  if (Number.isFinite(temp) && temp < 12) {
     return {
       type: 'cold',
-      message: 'Frío: lleva abrigo',
-      checklist: ['Abrigo/Cortavientos', 'Bufanda', 'Guantes']
+      message: 'Frío previsto: lleva una capa de abrigo.',
+      checklist: ['Abrigo o cortavientos', 'Bufanda', 'Guantes']
     };
   }
-  
-  if (temp > 28) {
+
+  if (Number.isFinite(temp) && temp > 28) {
     return {
       type: 'hot',
-      message: 'Calor: hidrátate y usa protector solar',
-      checklist: ['Protector solar SPF50', 'Gorra/Sombrero', 'Botella reutilizable', 'Ropa ligera']
+      message: 'Calor previsto: hidrátate y protege tu piel.',
+      checklist: ['Protector solar SPF50', 'Gorra o sombrero', 'Botella reutilizable', 'Ropa ligera']
     };
   }
-  
+
   if (description.includes('despejado') || description.includes('soleado')) {
     return {
       type: 'sunny',
-      message: 'Día soleado: ideal para festival al aire libre',
+      message: 'Día soleado: ideal para un festival al aire libre.',
       checklist: ['Protector solar', 'Gafas de sol', 'Gorra']
     };
   }
-  
+
   return {
     type: 'mild',
-    message: 'Clima agradable para festival',
+    message: 'Clima agradable: lleva ropa cómoda y una capa ligera para la noche.',
     checklist: ['Ropa cómoda', 'Calzado deportivo', 'Chaqueta ligera para la noche']
   };
 }

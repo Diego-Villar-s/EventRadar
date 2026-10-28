@@ -1,26 +1,61 @@
 import axios from 'axios';
-import dotenv from 'dotenv';
 import { getCache, setCache } from '../utils/cache.js';
 
-dotenv.config();
-
-const MUSIXMATCH_API_KEY = process.env.MUSIXMATCH_API_KEY;
 const BASE_URL = 'https://api.musixmatch.com/ws/1.1';
 
-export async function searchTrack(artistName, trackName) {
-  const cacheKey = `musixmatch:search:${artistName}:${trackName}`;
+function getKey() {
+  const key = process.env.MUSIXMATCH_API_KEY;
+  if (!key) return null;
+  const trimmed = key.trim();
+  if (!trimmed || /^(your_|tu_|change|example|placeholder|xxx)/i.test(trimmed)) return null;
+  return trimmed;
+}
+
+export function isMusixmatchConfigured() {
+  return Boolean(getKey());
+}
+
+function apiError(statusCode) {
+  if (statusCode === 401) {
+    return {
+      code: 'MUSIXMATCH_AUTH_ERROR',
+      message: 'Musixmatch rechazó la API key configurada.'
+    };
+  }
+  if (statusCode === 404) {
+    return { code: 'NOT_FOUND', message: 'Musixmatch no encontró la letra solicitada.' };
+  }
+  return {
+    code: 'MUSIXMATCH_ERROR',
+    message: 'Musixmatch no pudo devolver la letra en este momento.'
+  };
+}
+
+export async function findLyrics(artistName, trackName) {
+  if (!artistName || !trackName) {
+    return { lyrics: null, track: null, error: { code: 'BAD_REQUEST', message: 'Faltan el artista o la canción.' } };
+  }
+
+  const key = getKey();
+  if (!key) {
+    return {
+      lyrics: null,
+      track: null,
+      error: {
+        code: 'MISSING_KEY',
+        message: 'Musixmatch no está configurado. Añade MUSIXMATCH_API_KEY para mostrar letras.'
+      }
+    };
+  }
+
+  const cacheKey = `musixmatch:find:${artistName.toLowerCase()}:${trackName.toLowerCase()}`;
   const cached = getCache(cacheKey);
   if (cached) return cached;
-  
-  if (!MUSIXMATCH_API_KEY) {
-    console.warn('Musixmatch API key not configured');
-    return null;
-  }
-  
+
   try {
-    const response = await axios.get(`${BASE_URL}/track.search`, {
+    const searchResponse = await axios.get(`${BASE_URL}/track.search`, {
       params: {
-        apikey: MUSIXMATCH_API_KEY,
+        apikey: key,
         q_artist: artistName,
         q_track: trackName,
         format: 'json',
@@ -28,53 +63,73 @@ export async function searchTrack(artistName, trackName) {
       },
       timeout: 10000
     });
-    
-    if (response.data.message.body.track_list && response.data.message.body.track_list.length > 0) {
-      const track = response.data.message.body.track_list[0].track;
-      setCache(cacheKey, track, 1800);
-      return track;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Error searching track on Musixmatch:', error.message);
-    return null;
-  }
-}
 
-export async function getLyrics(trackId) {
-  const cacheKey = `musixmatch:lyrics:${trackId}`;
-  const cached = getCache(cacheKey);
-  if (cached) return cached;
-  
-  if (!MUSIXMATCH_API_KEY) {
-    return null;
-  }
-  
-  try {
-    const response = await axios.get(`${BASE_URL}/track.lyrics.get`, {
-      params: {
-        apikey: MUSIXMATCH_API_KEY,
-        track_id: trackId,
-        format: 'json'
-      },
+    const header = searchResponse.data?.message?.header;
+    if (header?.status_code !== 200) {
+      const result = { lyrics: null, track: null, error: apiError(header?.status_code) };
+      return result;
+    }
+
+    const track = searchResponse.data?.message?.body?.track_list?.[0]?.track || null;
+    if (!track?.track_id) {
+      const result = {
+        lyrics: null,
+        track: null,
+        error: { code: 'NOT_FOUND', message: 'Musixmatch no encontró esa canción.' }
+      };
+      setCache(cacheKey, result, 300);
+      return result;
+    }
+
+    const lyricsResponse = await axios.get(`${BASE_URL}/track.lyrics.get`, {
+      params: { apikey: key, track_id: track.track_id, format: 'json' },
       timeout: 10000
     });
-    
-    if (response.data.message.body.lyrics) {
-      const lyrics = response.data.message.body.lyrics.lyrics_body;
-      // Musixmatch free tier only gives snippet
-      setCache(cacheKey, lyrics, 1800);
-      return {
-        lyrics: lyrics,
-        hasFullLyrics: false,
-        disclaimer: response.data.message.body.lyrics.lyrics_copyright
+
+    const lyricsHeader = lyricsResponse.data?.message?.header;
+    if (lyricsHeader?.status_code !== 200) {
+      const result = {
+        lyrics: null,
+        track: {
+          id: track.track_id,
+          name: track.track_name,
+          artist: track.artist_name
+        },
+        error: apiError(lyricsHeader?.status_code)
       };
+      return result;
     }
-    
-    return null;
+
+    const lyrics = lyricsResponse.data?.message?.body?.lyrics;
+    const result = {
+      lyrics: lyrics?.lyrics_body || null,
+      track: {
+        id: track.track_id,
+        name: track.track_name,
+        artist: track.artist_name
+      },
+      hasFullLyrics: false,
+      disclaimer: lyrics?.lyrics_copyright || null,
+      error: lyrics?.lyrics_body ? null : {
+        code: 'EMPTY',
+        message: 'Musixmatch no devolvió texto para esa canción.'
+      }
+    };
+
+    setCache(cacheKey, result, 1800);
+    return result;
   } catch (error) {
-    console.error('Error getting lyrics from Musixmatch:', error.message);
-    return null;
+    const status = error.response?.status;
+    return {
+      lyrics: null,
+      track: null,
+      error: status === 401
+        ? apiError(401)
+        : {
+            code: 'MUSIXMATCH_ERROR',
+            status: status || null,
+            message: 'No se pudo conectar con Musixmatch.'
+          }
+    };
   }
 }
