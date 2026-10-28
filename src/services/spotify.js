@@ -27,6 +27,22 @@ function isUsableValue(value) {
   return !/^(your[_-]|tu[_-]|change[_-]?me|example|placeholder|xxx)/i.test(value);
 }
 
+function getBaseUrl() {
+  return (getEnv('BASE_URL') || 'http://127.0.0.1:3000').replace(/\/+$/, '');
+}
+
+/**
+ * Resuelve el redirect URI de Spotify. Si no está configurado, se deriva de
+ * BASE_URL para evitar enviar a Spotify un callback de localhost en producción.
+ */
+export function getSpotifyRedirectUri() {
+  const configured = getEnv('SPOTIFY_REDIRECT_URI');
+  if (isUsableValue(configured) && /^https?:\/\//i.test(configured)) {
+    return configured.replace(/\/+$/, '');
+  }
+  return `${getBaseUrl()}/callback`;
+}
+
 export function getSpotifyMarket() {
   return (getEnv('SPOTIFY_MARKET') || 'ES').toUpperCase();
 }
@@ -34,7 +50,7 @@ export function getSpotifyMarket() {
 export function getSpotifyConfigStatus() {
   const clientId = getEnv('SPOTIFY_CLIENT_ID');
   const clientSecret = getEnv('SPOTIFY_CLIENT_SECRET');
-  const redirectUri = getEnv('SPOTIFY_REDIRECT_URI');
+  const redirectUri = getSpotifyRedirectUri();
 
   return {
     clientId: isUsableValue(clientId),
@@ -60,7 +76,7 @@ export function getAuthorizationUrl(state, codeChallenge) {
     response_type: 'code',
     client_id: getEnv('SPOTIFY_CLIENT_ID'),
     scope: SCOPES.join(' '),
-    redirect_uri: getEnv('SPOTIFY_REDIRECT_URI'),
+    redirect_uri: getSpotifyRedirectUri(),
     state,
     code_challenge_method: 'S256',
     code_challenge: codeChallenge
@@ -71,7 +87,7 @@ export function getAuthorizationUrl(state, codeChallenge) {
 
 export async function getTokens(code, codeVerifier) {
   const clientId = getEnv('SPOTIFY_CLIENT_ID');
-  const redirectUri = getEnv('SPOTIFY_REDIRECT_URI');
+  const redirectUri = getSpotifyRedirectUri();
 
   if (!isSpotifyConfigured()) {
     throw new Error('Spotify no está configurado para canjear el código.');

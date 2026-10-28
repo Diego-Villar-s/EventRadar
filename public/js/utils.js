@@ -82,6 +82,14 @@ export function formatPrice(event) {
   }
 }
 
+export function formatDistance(km) {
+  const value = Number(km);
+  if (!Number.isFinite(value) || value < 0) return null;
+  if (value < 1) return 'a menos de 1 km';
+  if (value < 10) return `a ${value.toFixed(1).replace('.', ',')} km`;
+  return `a ${Math.round(value)} km`;
+}
+
 export function formatDuration(ms) {
   const total = Math.round(Number(ms) / 1000);
   if (!Number.isFinite(total) || total <= 0) return '';

@@ -43,6 +43,20 @@ function photonDisplayName(properties = {}) {
   ].filter(Boolean).join(', ');
 }
 
+function normalizedPlace(address = {}, fallback = {}) {
+  const city = address.city
+    || address.town
+    || address.village
+    || address.municipality
+    || address.county
+    || fallback.city
+    || null;
+  const country = address.country || fallback.country || null;
+  const rawCode = address.country_code || fallback.countryCode || '';
+  const countryCode = /^[a-z]{2}$/i.test(rawCode) ? rawCode.toUpperCase() : null;
+  return { city, country, countryCode };
+}
+
 export async function getRoute(fromLng, fromLat, toLng, toLat, profile = 'driving') {
   if (![fromLng, fromLat, toLng, toLat].every(validCoordinate)) {
     return { route: null, error: { code: 'BAD_REQUEST', message: 'Las coordenadas de origen o destino no son válidas.' } };
@@ -112,17 +126,19 @@ export async function geocode(address) {
 
   try {
     const response = await axios.get(`${NOMINATIM_BASE_URL}/search`, {
-      params: { q: normalizedAddress, format: 'json', limit: 1 },
+      params: { q: normalizedAddress, format: 'json', limit: 1, addressdetails: 1 },
       headers: { 'User-Agent': USER_AGENT },
       timeout: 8000
     });
 
     if (response.data?.length > 0) {
       const item = response.data[0];
+      const place = normalizedPlace(item.address);
       const result = {
         lat: Number.parseFloat(item.lat),
         lng: Number.parseFloat(item.lon),
         displayName: item.display_name,
+        ...place,
         source: 'nominatim'
       };
       if (Number.isFinite(result.lat) && Number.isFinite(result.lng)) {
@@ -142,10 +158,16 @@ export async function geocode(address) {
     const feature = response.data?.features?.[0];
     const coordinates = feature?.geometry?.coordinates;
     if (Array.isArray(coordinates) && coordinates.length >= 2) {
+      const place = normalizedPlace({}, {
+        city: feature.properties?.city,
+        country: feature.properties?.country,
+        countryCode: feature.properties?.countrycode
+      });
       const result = {
         lat: Number(coordinates[1]),
         lng: Number(coordinates[0]),
         displayName: photonDisplayName(feature.properties) || normalizedAddress,
+        ...place,
         source: 'photon'
       };
       if (Number.isFinite(result.lat) && Number.isFinite(result.lng)) {
@@ -176,9 +198,12 @@ export async function reverseGeocode(lat, lng) {
     });
 
     if (response.data?.display_name) {
+      const address = response.data.address || null;
+      const place = normalizedPlace(address || {});
       const result = {
         displayName: response.data.display_name,
-        address: response.data.address || null,
+        address,
+        ...place,
         source: 'nominatim'
       };
       setCache(cacheKey, result, 3600);
@@ -195,13 +220,17 @@ export async function reverseGeocode(lat, lng) {
     });
     const feature = response.data?.features?.[0];
     if (feature?.properties) {
+      const address = {
+        city: feature.properties.city || null,
+        state: feature.properties.state || null,
+        country: feature.properties.country || null,
+        country_code: feature.properties.countrycode || null
+      };
+      const place = normalizedPlace(address);
       const result = {
         displayName: photonDisplayName(feature.properties),
-        address: {
-          city: feature.properties.city || null,
-          state: feature.properties.state || null,
-          country: feature.properties.country || null
-        },
+        address,
+        ...place,
         source: 'photon'
       };
       setCache(cacheKey, result, 3600);

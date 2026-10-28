@@ -1,16 +1,28 @@
-import { getAffinityProfile, getCurrentUser, getEvents } from '../api.js';
+import {
+  DEFAULT_RADIUS_KM,
+  clearOrigin,
+  detectOrigin,
+  getAffinityProfile,
+  getCurrentUser,
+  getEvents,
+  getSavedOrigin,
+  saveOrigin
+} from '../api.js';
 import {
   artistHash,
   avatarUrl,
   emptyState,
   escapeHtml,
   eventImage,
+  formatDistance,
   formatEventDate,
   formatEventTime,
   formatPrice,
   hasValidCoordinates,
   safeHttpUrl
 } from '../utils.js';
+
+const RADIUS_OPTIONS = [50, 100, 150, 250, 500];
 
 function uniqueGenres(events) {
   const seen = new Map();
@@ -24,13 +36,37 @@ function uniqueGenres(events) {
   return [...seen.values()].slice(0, 8);
 }
 
+function locationName(origin) {
+  if (!origin) return 'Mi ubicación';
+  const place = origin.city || origin.label || 'Mi ubicación';
+  return origin.country ? `${place}, ${origin.country}` : place;
+}
+
+function scopeMessage(scope, origin, radiusKm) {
+  switch (scope) {
+    case 'nearby':
+      return `Conciertos en un radio de ${radiusKm} km`;
+    case 'country':
+      return `Sin conciertos cerca; mostrando eventos de ${origin?.country || 'tu país'}`;
+    case 'city':
+      return `Sin conciertos cerca; mostrando eventos de ${origin?.city || 'tu ciudad'}`;
+    case 'global':
+      return 'Sin eventos en tu zona; mostrando cartelera internacional';
+    default:
+      return 'Eventos ordenados por cercanía';
+  }
+}
+
 export class MatchView {
   constructor(container) {
     this.container = container;
     this.user = null;
     this.affinity = null;
     this.events = [];
+    this.meta = null;
     this.error = null;
+    this.locationError = null;
+    this.origin = getSavedOrigin();
     this.genre = 'all';
     this.search = '';
     this.sort = 'date';
@@ -38,6 +74,7 @@ export class MatchView {
     this.handleClick = this.handleClick.bind(this);
     this.handleInput = this.handleInput.bind(this);
     this.handleChange = this.handleChange.bind(this);
+    this.handleOriginChange = this.handleOriginChange.bind(this);
   }
 
   async render() {
@@ -48,6 +85,7 @@ export class MatchView {
           <div id="affinitySlot">
             <div class="view-loading" role="status"><span class="material-symbols-outlined">progress_activity</span><span>Cargando tu perfil musical…</span></div>
           </div>
+          <section class="location-bar" id="locationBar" aria-label="Ubicación de los eventos"></section>
           <section class="filters-bar" aria-label="Filtros de eventos">
             <div class="filters-chips" id="genreFilters"></div>
             <div class="filters-selectors">
@@ -59,6 +97,7 @@ export class MatchView {
                 <span class="material-symbols-outlined">sort</span>
                 <select id="eventSort" aria-label="Ordenar eventos">
                   <option value="date">Fecha</option>
+                  <option value="distance">Más cercanos</option>
                   <option value="match">Mejor match</option>
                 </select>
               </label>
@@ -82,20 +121,34 @@ export class MatchView {
     this.container.addEventListener('click', this.handleClick);
     this.container.addEventListener('input', this.handleInput);
     this.container.addEventListener('change', this.handleChange);
+    window.addEventListener('eventradar:origin', this.handleOriginChange);
     await this.loadData();
   }
 
   async loadData() {
+    this.origin = getSavedOrigin();
     this.user = await getCurrentUser();
+
+    const params = { size: 24 };
+    if (this.origin) {
+      params.lat = this.origin.lat;
+      params.lng = this.origin.lng;
+      params.radius = this.origin.radiusKm || DEFAULT_RADIUS_KM;
+      params.unit = 'km';
+      if (this.origin.countryCode) params.countryCode = this.origin.countryCode;
+      if (this.origin.city) params.city = this.origin.city;
+    }
+
     const [affinity, result] = await Promise.all([
       this.user ? getAffinityProfile() : Promise.resolve(null),
-      getEvents({ size: 20 })
+      getEvents(params)
     ]);
 
     this.affinity = affinity;
     this.events = result.events || [];
+    this.meta = result.meta || null;
     this.error = result.error || null;
-    this.sort = this.affinity ? 'match' : 'date';
+    this.sort = this.affinity ? 'match' : (this.origin ? 'distance' : 'date');
 
     const scored = this.events.filter((event) => typeof event.matchScore === 'number');
     this.averageMatch = scored.length
@@ -103,6 +156,7 @@ export class MatchView {
       : null;
 
     this.renderAffinity();
+    this.renderLocation();
     this.renderFilters();
     this.renderEvents();
   }
@@ -186,6 +240,51 @@ export class MatchView {
     `;
   }
 
+  renderLocation() {
+    const bar = this.container.querySelector('#locationBar');
+    if (!bar) return;
+
+    const origin = this.origin;
+    if (!origin) {
+      bar.innerHTML = `
+        <div class="location-card">
+          <span class="location-icon material-symbols-outlined">my_location</span>
+          <div class="location-copy">
+            <strong>Activa tu ubicación</strong>
+            <span>${this.locationError ? escapeHtml(this.locationError) : 'Verás conciertos cerca de tu ciudad o de tu país.'}</span>
+          </div>
+          <button class="location-btn" type="button" data-action="use-location">
+            <span class="material-symbols-outlined">near_me</span> Usar mi ubicación
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    const radiusKm = this.meta?.radiusKm || origin.radiusKm || DEFAULT_RADIUS_KM;
+    const scope = this.meta?.scope || 'nearby';
+
+    bar.innerHTML = `
+      <div class="location-card">
+        <span class="location-icon material-symbols-outlined">near_me</span>
+        <div class="location-copy">
+          <strong>${escapeHtml(locationName(origin))}</strong>
+          <span>${escapeHtml(scopeMessage(scope, origin, radiusKm))}</span>
+        </div>
+        <div class="location-actions">
+          <label class="location-radius">
+            <span>Radio</span>
+            <select id="locationRadius" aria-label="Radio de búsqueda">
+              ${RADIUS_OPTIONS.map((option) => `<option value="${option}" ${option === radiusKm ? 'selected' : ''}>${option} km</option>`).join('')}
+            </select>
+          </label>
+          <button class="location-btn ghost" type="button" data-action="use-location">Cambiar</button>
+          <button class="location-btn ghost" type="button" data-action="clear-location">Ver todo</button>
+        </div>
+      </div>
+    `;
+  }
+
   renderFilters() {
     const chips = this.container.querySelector('#genreFilters');
     if (!chips) return;
@@ -201,14 +300,27 @@ export class MatchView {
 
     const sort = this.container.querySelector('#eventSort');
     if (sort) {
+      const distanceOption = sort.querySelector('option[value="distance"]');
+      if (distanceOption) distanceOption.disabled = !this.origin;
+      if (this.sort === 'distance' && !this.origin) this.sort = 'date';
       sort.value = this.sort;
       const matchOption = sort.querySelector('option[value="match"]');
       if (matchOption) matchOption.disabled = !this.affinity;
     }
     const search = this.container.querySelector('#eventSearch');
     if (search) search.value = this.search;
+    this.updateSortLabel();
+  }
+
+  updateSortLabel() {
     const label = this.container.querySelector('#eventsSortLabel');
-    if (label) label.textContent = this.sort === 'match' ? 'Ordenado por afinidad' : 'Ordenado por fecha';
+    if (!label) return;
+    const labels = {
+      match: 'Ordenado por afinidad',
+      distance: 'Ordenado por cercanía',
+      date: 'Ordenado por fecha'
+    };
+    label.textContent = labels[this.sort] || labels.date;
   }
 
   filteredEvents() {
@@ -232,6 +344,11 @@ export class MatchView {
       if (this.sort === 'match') {
         return (Number(b.matchScore) || 0) - (Number(a.matchScore) || 0);
       }
+      if (this.sort === 'distance') {
+        const aDistance = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
+        const bDistance = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
+        if (aDistance !== bDistance) return aDistance - bDistance;
+      }
       return (a.datetime || a.date || '').localeCompare(b.datetime || b.date || '');
     });
 
@@ -245,6 +362,7 @@ export class MatchView {
     const firstArtist = event.artists?.[0]?.name;
     const hasCoords = hasValidCoordinates(event.lat, event.lng);
     const matchScore = typeof event.matchScore === 'number' ? event.matchScore : null;
+    const distance = formatDistance(event.distanceKm);
 
     return `
       <article class="event-card-ref" aria-label="${escapeHtml(event.name)}">
@@ -266,6 +384,7 @@ export class MatchView {
               <span>${escapeHtml(event.venue || 'Recinto por confirmar')}${event.city ? `, ${escapeHtml(event.city)}` : ''}</span>
               ${formatEventTime(event) ? `<span>· ${escapeHtml(formatEventTime(event))}</span>` : ''}
             </div>
+            ${distance ? `<div class="event-card-ref-meta event-card-ref-distance"><span class="material-symbols-outlined">near_me</span><span>${escapeHtml(distance)} de tu ubicación</span></div>` : ''}
             ${event.artists?.length ? `<div class="event-card-ref-meta event-card-ref-artists"><span class="material-symbols-outlined">graphic_eq</span><span>${event.artists.slice(0, 3).map((artist) => escapeHtml(artist.name)).join(' · ')}</span></div>` : ''}
           </div>
           <div class="event-card-ref-actions">
@@ -303,7 +422,9 @@ export class MatchView {
       list.innerHTML = emptyState({
         icon: 'event_busy',
         title: 'Sin eventos próximos',
-        message: 'Ticketmaster no devolvió eventos de música para las próximas fechas.'
+        message: this.origin
+          ? 'No hay conciertos en tu zona ni en tu país para las próximas fechas.'
+          : 'Ticketmaster no devolvió eventos de música para las próximas fechas.'
       });
       return;
     }
@@ -323,6 +444,37 @@ export class MatchView {
     list.innerHTML = events.map((event) => this.eventCard(event)).join('');
   }
 
+  async requestLocation() {
+    const bar = this.container.querySelector('#locationBar');
+    if (bar) {
+      bar.innerHTML = `
+        <div class="location-card">
+          <span class="location-icon material-symbols-outlined">progress_activity</span>
+          <div class="location-copy">
+            <strong>Obteniendo tu ubicación…</strong>
+            <span>Acepta el permiso de ubicación del navegador.</span>
+          </div>
+        </div>
+      `;
+    }
+
+    this.locationError = null;
+    const { origin, error } = await detectOrigin();
+
+    if (!origin) {
+      this.locationError = error || 'No se pudo obtener la ubicación.';
+      this.renderLocation();
+      return;
+    }
+
+    // saveOrigin dispara 'eventradar:origin' y recarga los eventos.
+    saveOrigin(origin);
+  }
+
+  handleOriginChange() {
+    this.loadData();
+  }
+
   handleClick(event) {
     const action = event.target.closest('[data-action]')?.getAttribute('data-action');
     if (action === 'login') {
@@ -331,6 +483,14 @@ export class MatchView {
     }
     if (action === 'refresh') {
       this.render();
+      return;
+    }
+    if (action === 'use-location') {
+      this.requestLocation();
+      return;
+    }
+    if (action === 'clear-location') {
+      clearOrigin();
       return;
     }
 
@@ -352,9 +512,17 @@ export class MatchView {
   handleChange(event) {
     if (event.target.id === 'eventSort') {
       this.sort = event.target.value;
-      const label = this.container.querySelector('#eventsSortLabel');
-      if (label) label.textContent = this.sort === 'match' ? 'Ordenado por afinidad' : 'Ordenado por fecha';
+      this.updateSortLabel();
       this.renderEvents();
+      return;
+    }
+
+    if (event.target.id === 'locationRadius') {
+      const radiusKm = Number(event.target.value) || DEFAULT_RADIUS_KM;
+      const origin = getSavedOrigin();
+      if (origin) {
+        saveOrigin({ ...origin, radiusKm });
+      }
     }
   }
 
@@ -362,6 +530,7 @@ export class MatchView {
     this.container.removeEventListener('click', this.handleClick);
     this.container.removeEventListener('input', this.handleInput);
     this.container.removeEventListener('change', this.handleChange);
+    window.removeEventListener('eventradar:origin', this.handleOriginChange);
   }
 
   destroy() {

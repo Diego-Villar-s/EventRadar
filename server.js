@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 // Routes
 import authRoutes from './src/routes/auth.js';
 import spotifyRoutes, { handleSpotifyCallback } from './src/routes/spotify.js';
-import { isSpotifyConfigured } from './src/services/spotify.js';
+import { isSpotifyConfigured, getSpotifyRedirectUri } from './src/services/spotify.js';
 import eventsRoutes from './src/routes/events.js';
 import weatherRoutes from './src/routes/weather.js';
 import artistRoutes from './src/routes/artist.js';
@@ -212,6 +212,13 @@ app.use((err, req, res, next) => {
 
 if (!isSpotifyConfigured()) {
   console.warn('⚠️  Spotify no está configurado (claves ausentes o de ejemplo). /auth/login responderá 503.');
+} else {
+  const spotifyRedirect = getSpotifyRedirectUri();
+  const expectedRedirect = `${BASE_URL}/callback`;
+  if (spotifyRedirect !== expectedRedirect) {
+    console.warn(`⚠️  SPOTIFY_REDIRECT_URI (${spotifyRedirect}) no coincide con BASE_URL (${expectedRedirect}).`);
+    console.warn('   El login fallará si esa URL no está registrada exactamente en Spotify Dashboard.');
+  }
 }
 
 const server = app.listen(PORT, HOST, () => {

@@ -1,4 +1,5 @@
 import express from 'express';
+import { getSpotifyRedirectUri } from '../services/spotify.js';
 
 const router = express.Router();
 
@@ -21,7 +22,8 @@ router.get('/', (req, res) => {
     integrations: {
       spotify: configured('SPOTIFY_CLIENT_ID')
         && configured('SPOTIFY_CLIENT_SECRET')
-        && /^https?:\/\//i.test((process.env.SPOTIFY_REDIRECT_URI || '').trim()),
+        && /^https?:\/\//i.test(getSpotifyRedirectUri()),
+      spotifyRedirectUri: getSpotifyRedirectUri(),
       ticketmaster: configured('TICKETMASTER_API_KEY'),
       openweather: configured('OPENWEATHER_API_KEY'),
       genius: configured('GENIUS_ACCESS_TOKEN'),

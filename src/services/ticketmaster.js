@@ -36,6 +36,29 @@ function numberOrNull(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function haversineKm(origin, destination) {
+  if (!origin || !destination) return null;
+  const toRad = (value) => (Number(value) * Math.PI) / 180;
+  const lat1 = toRad(origin.lat);
+  const lat2 = toRad(destination.lat);
+  const deltaLat = lat2 - lat1;
+  const deltaLng = toRad(destination.lng - origin.lng);
+  const h = Math.sin(deltaLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+  return Math.round(6371 * 2 * Math.asin(Math.min(1, Math.sqrt(h))) * 10) / 10;
+}
+
+function validCoordinate(lat, lng) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  return Number.isFinite(latitude)
+    && Number.isFinite(longitude)
+    && latitude >= -90
+    && latitude <= 90
+    && longitude >= -180
+    && longitude <= 180;
+}
+
 function ticketmasterDate(date = new Date()) {
   return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
@@ -50,7 +73,7 @@ export function getDefaultStartDateTime() {
   return ticketmasterDate(start);
 }
 
-export function normalizeEvent(event) {
+export function normalizeEvent(event, origin = null) {
   const venue = event?._embedded?.venues?.[0] || null;
   const attractions = event?._embedded?.attractions || [];
   const classification = event?.classifications?.find((item) => item?.genre?.name) || event?.classifications?.[0] || null;
@@ -58,6 +81,11 @@ export function normalizeEvent(event) {
     classification?.genre?.name,
     classification?.subGenre?.name
   ].filter((genre) => genre && genre !== 'Undefined');
+  const lat = numberOrNull(venue?.location?.latitude);
+  const lng = numberOrNull(venue?.location?.longitude);
+  const distanceKm = origin && lat !== null && lng !== null
+    ? haversineKm(origin, { lat, lng })
+    : null;
 
   return {
     id: event?.id || null,
@@ -72,8 +100,9 @@ export function normalizeEvent(event) {
     city: venue?.city?.name || '',
     country: venue?.country?.name || '',
     countryCode: venue?.country?.countryCode || '',
-    lat: numberOrNull(venue?.location?.latitude),
-    lng: numberOrNull(venue?.location?.longitude),
+    lat,
+    lng,
+    distanceKm,
     priceMin: numberOrNull(event?.priceRanges?.[0]?.min),
     priceMax: numberOrNull(event?.priceRanges?.[0]?.max),
     currency: event?.priceRanges?.[0]?.currency || null,
@@ -118,14 +147,29 @@ export async function searchEvents(params = {}) {
 
   const size = Math.min(Math.max(Number.parseInt(params.size, 10) || DEFAULT_SIZE, 1), MAX_SIZE);
   const page = Math.max(Number.parseInt(params.page, 10) || 0, 0);
+  const hasOrigin = validCoordinate(params.lat, params.lng);
+  const distanceOrigin = validCoordinate(params.origin?.lat, params.origin?.lng)
+    ? { lat: Number(params.origin.lat), lng: Number(params.origin.lng) }
+    : hasOrigin
+      ? { lat: Number(params.lat), lng: Number(params.lng) }
+      : null;
+  const requestedSort = params.sort || 'date,asc';
+  const sort = requestedSort === 'distance,asc' && !hasOrigin ? 'date,asc' : requestedSort;
   const queryParams = {
     apikey: apiKey,
     classificationName: 'music',
     size,
     page,
-    sort: params.sort || 'date,asc',
+    sort,
     startDateTime: params.startDateTime || getDefaultStartDateTime()
   };
+
+  if (hasOrigin) {
+    const radius = Math.min(Math.max(Number.parseInt(params.radius, 10) || 100, 1), 500);
+    queryParams.latlong = `${Number(params.lat)},${Number(params.lng)}`;
+    queryParams.radius = radius;
+    queryParams.unit = params.unit === 'miles' ? 'miles' : 'km';
+  }
 
   if (params.city) queryParams.city = params.city;
   if (params.countryCode) queryParams.countryCode = params.countryCode;
@@ -150,7 +194,7 @@ export async function searchEvents(params = {}) {
     }
 
     const result = {
-      events: rawEvents.map(normalizeEvent).filter((event) => event.id),
+      events: rawEvents.map((event) => normalizeEvent(event, distanceOrigin)).filter((event) => event.id),
       page: response.data?.page || { number: page, size, totalElements: rawEvents.length },
       totalElements: response.data?.page?.totalElements ?? rawEvents.length,
       source: 'ticketmaster',

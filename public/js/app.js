@@ -32,8 +32,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.history.replaceState({}, document.title, `${window.location.pathname}#/inicio`);
     notify('Sesión de Spotify conectada.');
   } else if (hash.includes('callback=error')) {
+    const reason = new URLSearchParams(hash.replace(/^#/, '')).get('reason');
+    const messages = {
+      access_denied: 'Cancelaste el acceso a Spotify. Puedes intentarlo de nuevo cuando quieras.',
+      state: 'La sesión de login caducó o el dominio no coincide. Vuelve a intentarlo.',
+      missing_code: 'Spotify no devolvió el código de autorización. Reintenta el login.',
+      missing_verifier: 'Faltó el verificador PKCE. Vuelve a iniciar sesión desde EventRadar.',
+      token: 'Spotify rechazó el intercambio de token. Revisa SPOTIFY_REDIRECT_URI y las credenciales.',
+      spotify_error: 'Spotify devolvió un error durante la autorización.'
+    };
     window.history.replaceState({}, document.title, `${window.location.pathname}#/inicio`);
-    notify('No se pudo completar la conexión con Spotify.', 'error');
+    notify(messages[reason] || 'No se pudo completar la conexión con Spotify.', 'error');
   }
 
   initAuth();

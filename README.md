@@ -10,6 +10,7 @@ Aplicación web para descubrir eventos musicales, calcular la afinidad con el pe
 - Perfil de afinidad calculado con los artistas y canciones más escuchadas.
 - Match de 0 a 100 % entre el perfil y cada evento.
 - Eventos reales de Ticketmaster con búsqueda, filtros y ordenamiento.
+- Detección de ubicación al entrar y cascada **cerca → país → internacional**: si no hay conciertos en el radio elegido (50–500 km), se muestran los del país y luego la cartelera global, siempre indicando el alcance y la distancia de cada evento.
 - Rutas con Leaflet y OSRM, geocodificación con Nominatim/Photon.
 - Pronóstico del evento con OpenWeatherMap y checklist de equipaje.
 - Biografía con Genius y fragmentos de letras con Musixmatch.
@@ -51,7 +52,7 @@ Edita `.env` con tus credenciales reales. El archivo `.env` está ignorado por G
 | `SESSION_SECRET` | Sí en producción | Secreto de 32+ caracteres para firmar la cookie de sesión. |
 | `SPOTIFY_CLIENT_ID` | Sí | Client ID de la app de Spotify. |
 | `SPOTIFY_CLIENT_SECRET` | Sí | Client Secret de Spotify. |
-| `SPOTIFY_REDIRECT_URI` | Sí | Debe coincidir exactamente con Spotify Dashboard. |
+| `SPOTIFY_REDIRECT_URI` | Recomendada | Debe coincidir exactamente con Spotify Dashboard. Si falta, se usa `${BASE_URL}/callback`. |
 | `SPOTIFY_MARKET` | No | Mercado de Spotify; por defecto `ES`. |
 | `TICKETMASTER_API_KEY` | Recomendada | Descubrimiento de eventos. |
 | `OPENWEATHER_API_KEY` | Recomendada | Clima y pronóstico. |
@@ -75,6 +76,26 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 5. El callback se atiende en `/callback` y redirige a `/#callback=success` o `/#callback=error`.
 
 En producción, `SPOTIFY_REDIRECT_URI` debe usar el mismo dominio HTTPS de `BASE_URL`.
+Si `SPOTIFY_REDIRECT_URI` no está definido, el servidor lo deriva automáticamente como
+`${BASE_URL}/callback`.
+
+### Si el login falla en Render
+
+1. Entra a la app con el mismo dominio que configuraste. Si `SPOTIFY_REDIRECT_URI`
+   apunta a otro host, `/auth/login` muestra una página explicando el desajuste en
+   lugar de enviarte a un error de Spotify.
+2. En Render, `BASE_URL` y `SPOTIFY_REDIRECT_URI` deben ser:
+   - `BASE_URL=https://TU_SERVICIO.onrender.com`
+   - `SPOTIFY_REDIRECT_URI=https://TU_SERVICIO.onrender.com/callback`
+3. En Spotify Dashboard → **Redirect URIs**, agrega exactamente esa misma URL
+   (sin barra final). No basta con el callback de localhost.
+4. Si la app de Spotify está en **Development mode**, solo pueden entrar las cuentas
+   agregadas en **Users and Access**. Para cualquier otra cuenta Spotify devuelve
+   `access_denied` y la app muestra el motivo.
+5. Revisa `GET /api/health`: `integrations.spotify` debe ser `true`.
+
+El callback guarda una instantánea mínima del perfil en la sesión firmada, así que la
+navbar muestra tu cuenta aunque Spotify tarde o falle al responder `/api/me`.
 
 ## Otras APIs
 
@@ -113,7 +134,10 @@ La ruta desconocida vuelve a `#/inicio`.
 ## API del backend
 
 - `GET /api/health`: estado del proceso y claves configuradas (sin llamadas externas).
-- `GET /api/events`: listado de Ticketmaster.
+- `GET /api/session`: si hay sesión de Spotify y la instantánea del perfil (sin llamar a Spotify).
+- `GET /api/events`: listado de Ticketmaster. Acepta `lat`, `lng`, `radius` (1–500),
+  `unit`, `countryCode`, `city`, `keyword`, `size` y `page`. La respuesta incluye
+  `meta.scope` (`nearby`, `country`, `city` o `global`) y `distanceKm` por evento.
 - `GET /api/events/:id`: detalle de un evento.
 - `GET /api/weather?lat=...&lng=...`: clima del recinto.
 - `GET /api/artist/:id`: detalle de Spotify.

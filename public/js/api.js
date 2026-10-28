@@ -151,15 +151,33 @@ export async function getArtistLyrics(artist, track) {
   }
 }
 
-function navLocationLabel(origin) {
-  return origin?.label || 'Seleccionar ubicación';
+const ORIGIN_KEY = 'eventradar.origin';
+const LOCATION_PROMPT_KEY = 'eventradar.locationPrompted';
+export const DEFAULT_RADIUS_KM = 150;
+
+export async function getSession() {
+  try {
+    return await apiRequest('/api/session');
+  } catch {
+    return null;
+  }
 }
 
-export function initAuth() {
+function showProfile(user) {
+  if (!user) return;
   const loginBtn = document.getElementById('spotifyLoginBtn');
   const profileDiv = document.getElementById('navProfile');
   const profileImg = document.getElementById('navProfileImg');
   const profileName = document.getElementById('navProfileName');
+
+  if (loginBtn) loginBtn.style.display = 'none';
+  if (profileDiv) profileDiv.style.display = 'flex';
+  if (profileImg) profileImg.src = avatarUrl(user.images, user.display_name || user.id);
+  if (profileName) profileName.textContent = user.display_name || user.id || 'Usuario';
+}
+
+export function initAuth() {
+  const loginBtn = document.getElementById('spotifyLoginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
 
   if (loginBtn) {
@@ -175,14 +193,123 @@ export function initAuth() {
     });
   }
 
-  getCurrentUser().then((user) => {
-    if (!user) return;
-    if (loginBtn && profileDiv) {
-      loginBtn.style.display = 'none';
-      profileDiv.style.display = 'flex';
+  getSession().then((session) => {
+    if (session?.authenticated) {
+      // La sesión ya existe: mostramos la instantánea guardada al hacer login
+      // aunque Spotify tarde o falle al responder /api/me.
+      if (session.user) {
+        showProfile({
+          id: session.user.id,
+          display_name: session.user.displayName,
+          images: session.user.image ? [{ url: session.user.image }] : []
+        });
+      }
+      getCurrentUser(true).then((user) => {
+        if (user) showProfile(user);
+      });
+      return;
     }
-    if (profileImg) profileImg.src = avatarUrl(user.images, user.display_name || user.id);
-    if (profileName) profileName.textContent = user.display_name || user.id || 'Usuario';
+
+    getCurrentUser().then((user) => {
+      if (user) showProfile(user);
+    });
+  });
+}
+
+function locationLabel(origin) {
+  if (!origin) return 'Seleccionar ubicación';
+  const place = origin.city || origin.label;
+  if (!place) return 'Mi ubicación';
+  return origin.country ? `${place}, ${origin.country}` : place;
+}
+
+export function getSavedOrigin() {
+  try {
+    const raw = localStorage.getItem(ORIGIN_KEY);
+    if (!raw) return null;
+    const origin = JSON.parse(raw);
+    const lat = Number(origin?.lat);
+    const lng = Number(origin?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    const radiusKm = Number(origin?.radiusKm);
+    return {
+      lat,
+      lng,
+      label: origin?.label || 'Mi ubicación',
+      city: origin?.city || null,
+      country: origin?.country || null,
+      countryCode: origin?.countryCode || null,
+      radiusKm: Number.isFinite(radiusKm) && radiusKm > 0 ? radiusKm : DEFAULT_RADIUS_KM
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveOrigin(origin) {
+  try {
+    localStorage.setItem(ORIGIN_KEY, JSON.stringify(origin));
+  } catch {
+    // Sin localStorage la app sigue usando la ubicación en memoria.
+  }
+  window.dispatchEvent(new CustomEvent('eventradar:origin', { detail: origin }));
+  return origin;
+}
+
+export function clearOrigin() {
+  try {
+    localStorage.removeItem(ORIGIN_KEY);
+  } catch {
+    // Ignorar.
+  }
+  window.dispatchEvent(new CustomEvent('eventradar:origin', { detail: null }));
+}
+
+function originFromPosition(position, geocode) {
+  const { latitude, longitude } = position.coords;
+  const result = geocode?.result || null;
+  const address = result?.address || {};
+  const city = result?.city || address.city || address.town || address.village || address.municipality || null;
+  const country = result?.country || address.country || null;
+  const rawCode = result?.countryCode || address.country_code || '';
+  const countryCode = /^[a-z]{2}$/i.test(rawCode) ? rawCode.toUpperCase() : null;
+
+  return {
+    lat: latitude,
+    lng: longitude,
+    label: city || result?.displayName || 'Mi ubicación',
+    city,
+    country,
+    countryCode,
+    radiusKm: DEFAULT_RADIUS_KM
+  };
+}
+
+export function detectOrigin() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve({ origin: null, error: 'Geolocalización no disponible' });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        let geocode = null;
+        try {
+          geocode = await reverseGeocode(position.coords.latitude, position.coords.longitude);
+        } catch {
+          // La ubicación por coordenadas sigue siendo válida sin geocodificación.
+        }
+        resolve({ origin: originFromPosition(position, geocode), error: null });
+      },
+      (error) => {
+        const message = error?.code === 1
+          ? 'Permiso de ubicación denegado'
+          : 'No se pudo obtener la ubicación';
+        resolve({ origin: null, error: message });
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+    );
   });
 }
 
@@ -191,46 +318,69 @@ export function initNavLocation() {
   const text = document.getElementById('navLocationText');
   if (!button || !text) return;
 
-  const saved = localStorage.getItem('eventradar.origin');
-  if (saved) {
-    try {
-      const origin = JSON.parse(saved);
-      text.textContent = navLocationLabel(origin);
-    } catch {
-      localStorage.removeItem('eventradar.origin');
-    }
-  }
+  let current = getSavedOrigin();
 
-  button.addEventListener('click', () => {
-    if (!navigator.geolocation) {
-      text.textContent = 'Geolocalización no disponible';
-      return;
-    }
+  const paint = () => {
+    text.textContent = locationLabel(current);
+    button.classList.toggle('active', Boolean(current));
+    button.title = current ? 'Cambiar ubicación' : 'Usar mi ubicación actual';
+  };
+  paint();
 
+  const requestLocation = async (auto = false) => {
     const previous = text.textContent;
     text.textContent = 'Obteniendo ubicación…';
     button.disabled = true;
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        const response = await reverseGeocode(latitude, longitude);
-        const label = response.result?.address?.city
-          || response.result?.address?.town
-          || response.result?.address?.state
-          || response.result?.displayName
-          || 'Mi ubicación';
-        const origin = { lat: latitude, lng: longitude, label };
-        localStorage.setItem('eventradar.origin', JSON.stringify(origin));
-        text.textContent = label;
-        button.disabled = false;
-      },
-      () => {
-        text.textContent = previous;
-        button.disabled = false;
-        button.title = 'No se pudo obtener la ubicación. Revisa los permisos del navegador.';
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-    );
+    const { origin, error } = await detectOrigin();
+
+    button.disabled = false;
+    if (!origin) {
+      text.textContent = previous;
+      button.title = error || 'No se pudo obtener la ubicación. Revisa los permisos del navegador.';
+      if (!auto) {
+        window.dispatchEvent(new CustomEvent('eventradar:location-error', { detail: error }));
+      }
+      return;
+    }
+
+    current = saveOrigin(origin);
+    paint();
+  };
+
+  button.addEventListener('click', () => requestLocation(false));
+
+  window.addEventListener('eventradar:origin', (event) => {
+    current = event.detail || getSavedOrigin();
+    paint();
   });
+
+  // Al entrar por primera vez se pide la ubicación para mostrar eventos cercanos.
+  if (!current) {
+    let alreadyPrompted = false;
+    try {
+      alreadyPrompted = sessionStorage.getItem(LOCATION_PROMPT_KEY) === '1';
+    } catch {
+      // Ignorar.
+    }
+
+    if (!alreadyPrompted) {
+      try {
+        sessionStorage.setItem(LOCATION_PROMPT_KEY, '1');
+      } catch {
+        // Ignorar.
+      }
+
+      const start = () => setTimeout(() => requestLocation(true), 400);
+      if (navigator.permissions?.query) {
+        navigator.permissions.query({ name: 'geolocation' })
+          .then((status) => {
+            if (status.state !== 'denied') start();
+          })
+          .catch(start);
+      } else {
+        start();
+      }
+    }
+  }
 }

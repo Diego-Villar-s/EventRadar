@@ -1,10 +1,11 @@
-import { getEvents } from '../api.js';
+import { DEFAULT_RADIUS_KM, getEvents, getSavedOrigin } from '../api.js';
 import { artistHash, emptyState, escapeHtml, eventImage, formatEventDate, safeHttpUrl } from '../utils.js';
 
 export class WelcomeView {
   constructor(container) {
     this.container = container;
     this.events = [];
+    this.onOrigin = () => this.loadEvents();
   }
 
   async render() {
@@ -40,12 +41,24 @@ export class WelcomeView {
       }
     };
     this.container.addEventListener('click', this.onClick);
+    window.addEventListener('eventradar:origin', this.onOrigin);
 
     await this.loadEvents();
   }
 
   async loadEvents() {
-    const result = await getEvents({ size: 6 });
+    const origin = getSavedOrigin();
+    const params = { size: 6 };
+    if (origin) {
+      params.lat = origin.lat;
+      params.lng = origin.lng;
+      params.radius = origin.radiusKm || DEFAULT_RADIUS_KM;
+      params.unit = 'km';
+      if (origin.countryCode) params.countryCode = origin.countryCode;
+      if (origin.city) params.city = origin.city;
+    }
+
+    const result = await getEvents(params);
     this.events = result.events || [];
     const list = this.container.querySelector('#welcomeEvents');
     const count = this.container.querySelector('#welcomeCount');
@@ -104,5 +117,6 @@ export class WelcomeView {
 
   destroy() {
     if (this.onClick) this.container.removeEventListener('click', this.onClick);
+    window.removeEventListener('eventradar:origin', this.onOrigin);
   }
 }
