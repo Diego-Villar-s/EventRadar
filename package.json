@@ -2,22 +2,25 @@
   "name": "eventradar-festival-match",
   "version": "1.0.0",
   "description": "EventRadar & Festival Match - Universidad Andina del Cusco",
+  "private": true,
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "check": "node scripts/check-syntax.mjs && node scripts/check-imports.mjs",
+    "verify": "npm run check"
   },
   "dependencies": {
     "axios": "^1.6.8",
-    "cookie-parser": "^1.4.6",
-    "cors": "^2.8.5",
+    "cookie-session": "^2.1.1",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "express-session": "^1.18.0",
-    "node-cache": "^5.1.2",
-    "querystring": "^0.2.1",
-    "spotify-web-api-node": "^5.0.2",
-    "uuid": "^9.0.1"
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.3.0",
+    "node-cache": "^5.1.2"
   }
 }

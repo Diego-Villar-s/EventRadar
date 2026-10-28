@@ -17,6 +17,16 @@ function saveLastEventId(id) {
   }
 }
 
+function decodeRouteSegment(parts) {
+  const raw = parts.join('/');
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    // Una URL mal formada no debe romper el router; se usa el valor literal.
+    return raw;
+  }
+}
+
 class Router {
   constructor() {
     this.currentView = null;
@@ -186,7 +196,7 @@ class Router {
     const seq = ++this.renderSeq;
 
     if (path === 'ruta' || path === 'route') {
-      const eventId = rest.length ? decodeURIComponent(rest.join('/')) : null;
+      const eventId = rest.length ? decodeRouteSegment(rest) : null;
       if (eventId) {
         this.lastEventId = eventId;
         saveLastEventId(eventId);
@@ -199,7 +209,7 @@ class Router {
     }
 
     if (path === 'clima' || path === 'weather') {
-      const eventId = rest.length ? decodeURIComponent(rest.join('/')) : null;
+      const eventId = rest.length ? decodeRouteSegment(rest) : null;
       if (eventId) {
         this.lastEventId = eventId;
         saveLastEventId(eventId);
@@ -212,7 +222,7 @@ class Router {
     }
 
     if (path === 'artista' || path === 'artist') {
-      const artistId = rest.length ? decodeURIComponent(rest.join('/')) : null;
+      const artistId = rest.length ? decodeRouteSegment(rest) : null;
       this.activeRoute = 'artista';
       this.moveNavThumb(true);
       await this.loadView(async () => (await import('./views/artist-detail.js')).ArtistDetailView, { artistId });

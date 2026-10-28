@@ -2,149 +2,184 @@
 
 **Universidad Andina del Cusco - Curso Plataformas para el desarrollo de aplicaciones**
 
-Aplicación web completa y funcional para descubrir festivales musicales basados en tu afinidad con Spotify, planificar rutas, consultar el clima y conocer más sobre los artistas.
+Aplicación web para descubrir eventos musicales, calcular la afinidad con el perfil de Spotify, consultar rutas, revisar el clima del recinto y explorar artistas. El backend de Node.js concentra todas las llamadas a APIs externas; ninguna API key se envía al navegador.
 
-## Características
+## Funcionalidades
 
-- **Autenticación con Spotify** (OAuth 2.0 con PKCE)
-- **Perfil de afinidad musical** calculado desde tus top artistas y tracks
-- **Descubrimiento de eventos** con Ticketmaster (modo demo si no hay API key)
-- **Sistema de match** entre tu perfil y eventos (0-100%)
-- **Rutas e itinerarios** con Leaflet y OSRM
-- **Pronóstico del clima** con OpenWeatherMap
-- **Información de artistas** con Genius API
-- **Letras de canciones** con Musixmatch (snippet gratuito)
-- **Reproductor integrado** con Spotify
+- Login con Spotify OAuth 2.0 + PKCE y validación de `state`.
+- Perfil de afinidad calculado con los artistas y canciones más escuchadas.
+- Match de 0 a 100 % entre el perfil y cada evento.
+- Eventos reales de Ticketmaster con búsqueda, filtros y ordenamiento.
+- Rutas con Leaflet y OSRM, geocodificación con Nominatim/Photon.
+- Pronóstico del evento con OpenWeatherMap y checklist de equipaje.
+- Biografía con Genius y fragmentos de letras con Musixmatch.
+- Reproductor global con la API iFrame de Spotify y reproducción de tracks reales.
+- Caché en memoria, errores estructurados y estados vacíos honestos.
+- Diseño responsive con navbar global, mini player y navegación móvil.
 
-## Tecnologías
+## Requisitos
 
-- **Backend**: Node.js + Express
-- **Frontend**: Vanilla JavaScript + HTML + CSS
-- **APIs**: Spotify, Ticketmaster, OpenWeatherMap, Genius, Musixmatch, OSRM, Nominatim
-- **Mapas**: Leaflet
-- **Diseño**: Sistema Luminescent Slate (Apple-inspired dark UI)
+- Node.js 20 o superior.
+- npm 10 o superior.
+- Credenciales de las APIs que quieras habilitar.
 
-## Instalación
-
-### 1. Clonar o descargar el proyecto
+## Instalación local
 
 ```bash
-cd eventradar
-```
-
-### 2. Instalar dependencias
-
-```bash
-npm install
-```
-
-### 3. Configurar variables de entorno
-
-Copia `.env.example` a `.env` y configura las API keys:
-
-```bash
+npm ci
 cp .env.example .env
 ```
 
-Edita `.env` con tus credenciales:
+En Windows PowerShell:
 
-```env
-PORT=3000
-BASE_URL=http://127.0.0.1:3000
-SESSION_SECRET=tu_secreto_aleatorio_aqui
-
-# Spotify
-SPOTIFY_CLIENT_ID=tu_client_id
-SPOTIFY_CLIENT_SECRET=tu_client_secret
-SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/callback
-
-# Otras APIs
-TICKETMASTER_API_KEY=tu_ticketmaster_key
-OPENWEATHER_API_KEY=tu_openweather_key
-GENIUS_ACCESS_TOKEN=tu_genius_token
-MUSIXMATCH_API_KEY=tu_musixmatch_key
+```powershell
+npm ci
+Copy-Item .env.example .env
 ```
 
-### 4. Configurar Spotify
+Edita `.env` con tus credenciales reales. El archivo `.env` está ignorado por Git.
 
-1. Ve a [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Crea una nueva app
-3. En "Edit Settings", agrega `http://127.0.0.1:3000/callback` como Redirect URI
-4. Copia Client ID y Client Secret al `.env`
-5. **Importante**: En modo desarrollo, ve a "Users and Access" y agrega el email de la cuenta Spotify que usarás para probar
+### Variables de entorno
 
-### 5. Obtener otras API Keys
+| Variable | Obligatoria | Descripción |
+| --- | --- | --- |
+| `PORT` | No | Puerto HTTP. Por defecto `3000`. |
+| `HOST` | No | Interfaz de escucha. Por defecto `0.0.0.0`. |
+| `BASE_URL` | Sí en producción | URL pública sin barra final. Por defecto `http://127.0.0.1:3000`. |
+| `NODE_ENV` | No | `development` o `production`. |
+| `TRUST_PROXY` | Producción detrás de proxy | `true` para confiar en `X-Forwarded-*` y usar cookies seguras. |
+| `SESSION_SECRET` | Sí en producción | Secreto de 32+ caracteres para firmar la cookie de sesión. |
+| `SPOTIFY_CLIENT_ID` | Sí | Client ID de la app de Spotify. |
+| `SPOTIFY_CLIENT_SECRET` | Sí | Client Secret de Spotify. |
+| `SPOTIFY_REDIRECT_URI` | Sí | Debe coincidir exactamente con Spotify Dashboard. |
+| `SPOTIFY_MARKET` | No | Mercado de Spotify; por defecto `ES`. |
+| `TICKETMASTER_API_KEY` | Recomendada | Descubrimiento de eventos. |
+| `OPENWEATHER_API_KEY` | Recomendada | Clima y pronóstico. |
+| `GENIUS_ACCESS_TOKEN` | Recomendada | Biografías de artistas. |
+| `MUSIXMATCH_API_KEY` | Recomendada | Fragmentos de letras. |
 
-- **Ticketmaster**: [developer.ticketmaster.com](https://developer.ticketmaster.com/) - Gratis
-- **OpenWeatherMap**: [openweathermap.org/api](https://openweathermap.org/api) - Gratis (plan free)
-- **Genius**: [genius.com/api-clients](https://genius.com/api-clients) - Gratis
-- **Musixmatch**: [developer.musixmatch.com](https://developer.musixmatch.com/) - Gratis
+Genera un secreto de sesión con:
 
-### 6. Ejecutar la aplicación
-
-**Modo desarrollo (con auto-reload):**
 ```bash
-npm run dev
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-**Modo producción:**
+## Configurar Spotify
+
+1. Crea una app en [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
+2. En **Redirect URIs** agrega exactamente:
+   - Desarrollo: `http://127.0.0.1:3000/callback`
+   - Producción: `https://TU_DOMINIO/callback`
+3. Copia `Client ID` y `Client Secret` a `.env`.
+4. Si la app de Spotify está en modo desarrollo, agrega tu cuenta en **Users and Access**.
+5. El callback se atiende en `/callback` y redirige a `/#callback=success` o `/#callback=error`.
+
+En producción, `SPOTIFY_REDIRECT_URI` debe usar el mismo dominio HTTPS de `BASE_URL`.
+
+## Otras APIs
+
+- **Ticketmaster**: [developer.ticketmaster.com](https://developer.ticketmaster.com/)
+- **OpenWeatherMap**: [openweathermap.org/api](https://openweathermap.org/api)
+- **Genius**: [genius.com/api-clients](https://genius.com/api-clients)
+- **Musixmatch**: [developer.musixmatch.com](https://developer.musixmatch.com/)
+
+Si falta una clave o una API falla, la interfaz muestra un mensaje o un estado vacío. No se generan eventos, climas, letras ni biografías de ejemplo presentados como reales.
+
+## Ejecutar
+
 ```bash
-npm start
+npm run dev   # desarrollo con recarga automática
+npm start     # servidor normal
 ```
 
-Abre [http://127.0.0.1:3000](http://127.0.0.1:3000) en tu navegador.
+Abre [http://127.0.0.1:3000](http://127.0.0.1:3000). Usa `127.0.0.1` en local para que coincida con el redirect de Spotify.
 
-## Uso
+Comprobación de sintaxis e imports del frontend:
 
-1. **Conectar Spotify**: Haz clic en "Iniciar sesión con Spotify" para autenticarte
-2. **Explorar eventos**: Ve a la pestaña "Radar" para ver festivales recomendados con tu % de match
-3. **Planificar ruta**: En "Rutas & Acceso" puedes ver cómo llegar al recinto
-4. **Consultar clima**: En "Clima" revisa el pronóstico y tu checklist de equipaje
-5. **Conocer artistas**: En "Artistas" ve letras y más información
-
-## Modo Demo
-
-Si no configuras algunas API keys, la aplicación seguirá funcionando con:
-- **Ticketmaster**: 4 eventos de ejemplo (Primavera Sound, Sónar, Mad Cool, Lollapalooza)
-- **OpenWeatherMap**: Datos climáticos simulados
-- **Genius/Musixmatch**: Sin información de letras/artistas externa
-- **Spotify**: Requiere configuración obligatoria para login
-
-## Estructura del Proyecto
-
+```bash
+npm run check
 ```
+
+## Rutas de la SPA
+
+- `#/inicio`: bienvenida si no hay sesión; Match si hay sesión.
+- `#/match`: eventos y afinidad.
+- `#/ruta/:eventId`: mapa, origen, ruta y pasos.
+- `#/clima/:eventId`: pronóstico y checklist.
+- `#/artista/:id`: ficha, top tracks, letras, discografía y biografía.
+
+La ruta desconocida vuelve a `#/inicio`.
+
+## API del backend
+
+- `GET /api/health`: estado del proceso y claves configuradas (sin llamadas externas).
+- `GET /api/events`: listado de Ticketmaster.
+- `GET /api/events/:id`: detalle de un evento.
+- `GET /api/weather?lat=...&lng=...`: clima del recinto.
+- `GET /api/artist/:id`: detalle de Spotify.
+- `GET /api/artist/search?name=...`: búsqueda de artistas.
+- `GET /api/artist/lyrics?artist=...&track=...`: letra o fragmento.
+- `GET /api/geo/route`: ruta OSRM.
+- `GET /api/geo/geocode`: geocodificación.
+- `GET /api/me`, `GET /api/profile/affinity`: datos del usuario autenticado.
+- `GET /auth/login`, `GET /auth/logout`, `GET /callback`.
+
+## Seguridad y producción
+
+- `helmet` con CSP, `frame-ancestors 'none'`, `object-src 'none'` y HSTS en producción.
+  La CSP incluye `'unsafe-eval'` porque la API iFrame de Spotify evalúa su propio código;
+  el código propio de la aplicación no usa `eval`.
+- `cookie-session` firmada, `httpOnly`, `SameSite=Lax` y `Secure` en producción. No usa `MemoryStore`.
+- Rate limiting en `/api` y en autenticación.
+- `trust proxy` y cookies seguras detrás de HTTPS.
+- Errores 500 genéricos para el cliente; el detalle queda en el log del servidor.
+- Claves y tokens solo en el backend.
+- En producción el servidor se niega a iniciar si `SESSION_SECRET` falta o es un valor de ejemplo.
+
+### Render
+
+El repositorio incluye `render.yaml` con:
+- Build: `npm ci`.
+- Start: `npm start`.
+- Health check: `/api/health`.
+- `SESSION_SECRET` generado por Render.
+- Variables secretas marcadas para configurar manualmente.
+
+Después del despliegue configura en Render:
+1. `BASE_URL=https://tu-servicio.onrender.com`
+2. `SPOTIFY_REDIRECT_URI=https://tu-servicio.onrender.com/callback`
+3. Las claves de Spotify y de las demás APIs.
+4. Verifica que el Redirect URI esté agregado en Spotify Dashboard.
+
+## Estructura
+
+```text
 eventradar/
-├── server.js           # Servidor Express
+├── server.js                 # Express, seguridad, sesión y estáticos
 ├── src/
-│   ├── routes/         # Rutas de API
-│   ├── services/       # Integración con APIs externas
-│   └── utils/          # Utilidades (cache, matchScore, etc.)
+│   ├── routes/               # Endpoints HTTP
+│   ├── services/             # Integraciones externas
+│   └── utils/                # Caché, matching y géneros
 ├── public/
-│   ├── css/            # Estilos
-│   ├── js/             # Frontend JavaScript
-│   │   ├── views/      # Vistas de la app
-│   │   ├── components/ # Componentes reutilizables
-│   │   └── app.js      # Entry point
-│   └── index.html      # HTML principal
-└── reference/          # HTMLs de referencia
+│   ├── css/
+│   ├── js/
+│   │   ├── components/
+│   │   └── views/
+│   └── index.html
+├── scripts/                  # Verificación de sintaxis e imports
+├── render.yaml
+├── .env.example
+└── package.json
 ```
 
-## Características Técnicas
+## Limitaciones conocidas
 
-- **Caché en memoria** con TTL (5-15 minutos) para reducir llamadas a APIs
-- **Tokens Spotify** con refresh automático
-- **Cálculo de match** sin usar endpoints deprecados de Spotify
-- **Diseño responsive** (Desktop, Tablet, Móvil)
-- **Accesibilidad**: ARIA labels, foco visible, soporte prefers-reduced-motion
-- **Manejo de errores** graceful con fallbacks
+- La instancia pública de OSRM no cubre rutas intercontinentales. La app rechaza rutas cuyo trayecto no llega al destino real y muestra un mensaje en lugar de inventar un recorrido.
+- Genius puede responder `401` si el token no es válido; la ficha del artista indica el error.
+- Musixmatch puede limitar el acceso al fragmento de letras según el plan de la cuenta.
+- El reproductor de Spotify requiere una cuenta con sesión y puede necesitar Spotify Premium para controlar la reproducción según las reglas de Spotify.
+- Las APIs externas pueden fallar o limitar solicitudes; la app no sustituye esos datos con contenido ficticio.
 
-## Notas
+## Créditos
 
-- Las keys de APIs nunca se exponen al cliente, todas las llamadas pasan por el backend
-- En desarrollo usa `127.0.0.1` en lugar de `localhost` para evitar problemas con Spotify
-- El reproductor usa Spotify Embed API y Web Playback SDK cuando está disponible
-- OSRM usa `router.project-osrm.org` (público, sin key requerida)
-
-## Autor
-
-Proyecto desarrollado para el curso Plataformas para el desarrollo de aplicaciones - Universidad Andina del Cusco
+Proyecto desarrollado para el curso **Plataformas para el desarrollo de aplicaciones** de la Universidad Andina del Cusco.

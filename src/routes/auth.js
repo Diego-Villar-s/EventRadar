@@ -55,28 +55,18 @@ router.get('/login', (req, res) => {
   req.session.state = state;
   req.session.codeVerifier = codeVerifier;
 
-  req.session.save((err) => {
-    if (err) {
-      console.error('Error saving session before Spotify login:', err);
-      return res.status(500).send('No se pudo iniciar la sesión de Spotify');
-    }
-
-    try {
-      return res.redirect(getAuthorizationUrl(state, codeChallenge));
-    } catch (error) {
-      console.error('Error building Spotify authorization URL:', error.message);
-      return res.status(503).send('Spotify no está configurado correctamente');
-    }
-  });
+  try {
+    // cookie-session firma y escribe la cookie al finalizar la respuesta.
+    return res.redirect(getAuthorizationUrl(state, codeChallenge));
+  } catch (error) {
+    console.error('Error building Spotify authorization URL:', error.message);
+    return res.status(503).send('Spotify no está configurado correctamente');
+  }
 });
 
 router.get('/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      console.error('Error destroying session:', err);
-    }
-    res.redirect('/');
-  });
+  req.session = null;
+  res.redirect('/');
 });
 
 export default router;

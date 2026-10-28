@@ -14,9 +14,21 @@ function formatMinutes(minutes) {
   return `${Math.floor(total / 60)} h ${total % 60} min`;
 }
 
+const STEP_MODIFIERS = {
+  left: 'a la izquierda',
+  right: 'a la derecha',
+  'slight left': 'ligeramente a la izquierda',
+  'slight right': 'ligeramente a la derecha',
+  'sharp left': 'cerrada a la izquierda',
+  'sharp right': 'cerrada a la derecha',
+  straight: 'recto',
+  uturn: 'en U'
+};
+
 function stepInstruction(step) {
   const type = step.maneuver?.type || 'continue';
-  const modifier = step.maneuver?.modifier || '';
+  const rawModifier = step.maneuver?.modifier || '';
+  const modifier = STEP_MODIFIERS[rawModifier] || rawModifier;
   const name = step.name ? ` por ${step.name}` : '';
   const destination = step.destinations ? ` hacia ${step.destinations}` : '';
 
@@ -24,8 +36,9 @@ function stepInstruction(step) {
   if (type === 'arrive') return `Llega a ${step.name || 'tu destino'}`;
   if (type === 'roundabout' || type === 'rotary') return `Entra en la rotonda y toma la salida${name}`;
   if (type === 'merge') return `Incorpórate${name}`;
-  if (type === 'fork') return `Toma el desvío ${modifier}${name}`;
+  if (type === 'fork') return modifier ? `Toma el desvío ${modifier}${name}` : `Toma el desvío${name}`;
   if (type === 'end of road') return `Al final de la vía, gira ${modifier}${name}`;
+  if (modifier === 'recto') return `Continúa recto${name}${destination}`;
   if (modifier) return `Gira ${modifier}${name}${destination}`;
   return `Continúa${name}${destination}`;
 }
