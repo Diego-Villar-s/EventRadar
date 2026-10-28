@@ -8,7 +8,7 @@ import {
 } from '../services/deezer.js';
 import { getArtistTopTags, isLastfmConfigured } from '../services/lastfm.js';
 import { findArtist } from '../services/genius.js';
-import { findLyrics } from '../services/musixmatch.js';
+import { findLyrics } from '../services/lyrics.js';
 
 const router = express.Router();
 const DEEZER_ID = /^\d+$/;

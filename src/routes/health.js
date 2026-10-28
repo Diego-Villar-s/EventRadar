@@ -27,6 +27,8 @@ router.get('/', (req, res) => {
       // Catálogo público de artistas, canciones y previews (sin API key).
       deezer: isDeezerConfigured(),
       deezerNote: 'API pública sin clave; las llamadas se hacen desde el servidor.',
+      // Letras completas gratuitas, sin API key.
+      lrclib: true,
       // Spotify queda en pausa temporalmente. Se conserva su configuración
       // para poder reactivarlo sin perder el trabajo anterior.
       spotify: false,

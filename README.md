@@ -13,7 +13,7 @@ Aplicación web para descubrir eventos musicales, calcular la afinidad con tu pe
 - Detección de ubicación al entrar y cascada **cerca → país → internacional**: si no hay conciertos en el radio elegido (50–500 km), se muestran los del país y luego la cartelera global, siempre indicando el alcance y la distancia de cada evento.
 - Rutas con Leaflet y OSRM, geocodificación con Nominatim/Photon.
 - Pronóstico del evento con OpenWeatherMap y checklist de equipaje.
-- Biografía con Genius y fragmentos de letras con Musixmatch.
+- Biografía con Genius y letras completas con LRCLIB; Musixmatch queda como respaldo opcional.
 - Catálogo de artistas con **Deezer**: búsqueda, ficha, top de canciones y discografía.
 - Reproductor global de **previews de 30 segundos** de Deezer usando `<audio>`.
 - Caché en memoria, errores estructurados y estados vacíos honestos.
@@ -58,7 +58,7 @@ Edita `.env` con tus credenciales reales. El archivo `.env` está ignorado por G
 | `TICKETMASTER_API_KEY` | Recomendada | Descubrimiento de eventos. |
 | `OPENWEATHER_API_KEY` | Recomendada | Clima y pronóstico. |
 | `GENIUS_ACCESS_TOKEN` | Recomendada | Biografías de artistas. |
-| `MUSIXMATCH_API_KEY` | Recomendada | Fragmentos de letras. |
+| `MUSIXMATCH_API_KEY` | No | Respaldo opcional de letras. LRCLIB (principal) no necesita clave. |
 | `SPOTIFY_CLIENT_ID` | No (en pausa) | Se conserva para reactivar Spotify. |
 | `SPOTIFY_CLIENT_SECRET` | No (en pausa) | Se conserva para reactivar Spotify. |
 | `SPOTIFY_REDIRECT_URI` | No (en pausa) | Debe coincidir con Spotify Dashboard al reactivarlo. |
@@ -111,7 +111,8 @@ El handler de Spotify se conserva en `GET /auth/spotify` justamente para no perd
 - **Ticketmaster**: [developer.ticketmaster.com](https://developer.ticketmaster.com/)
 - **OpenWeatherMap**: [openweathermap.org/api](https://openweathermap.org/api)
 - **Genius**: [genius.com/api-clients](https://genius.com/api-clients)
-- **Musixmatch**: [developer.musixmatch.com](https://developer.musixmatch.com/)
+- **LRCLIB**: [lrclib.net](https://lrclib.net/) (letras libres, sin clave)
+- **Musixmatch**: [developer.musixmatch.com](https://developer.musixmatch.com/) (respaldo opcional)
 
 Si falta una clave o una API falla, la interfaz muestra un mensaje o un estado vacío. No se generan eventos, climas, letras ni biografías de ejemplo presentados como reales.
 
@@ -142,7 +143,7 @@ La ruta desconocida vuelve a `#/inicio`.
 
 ## API del backend
 
-- `GET /api/health`: estado del proceso y claves configuradas (sin llamadas externas). Incluye `integrations.lastfm`, `integrations.deezer` y `integrations.spotifyPaused`.
+- `GET /api/health`: estado del proceso y claves configuradas (sin llamadas externas). Incluye `integrations.lastfm`, `integrations.deezer`, `integrations.lrclib` y `integrations.spotifyPaused`.
 - `GET /api/session`: sesión activa de Last.fm (usuario e imagen), sin llamar a Last.fm.
 - `GET /api/me`: perfil normalizado del usuario de Last.fm conectado.
 - `GET /api/profile/affinity`: artistas, canciones y géneros principales del usuario.
@@ -191,7 +192,7 @@ Después del despliegue configura en Render:
 
 1. `BASE_URL=https://tu-servicio.onrender.com`
 2. `LASTFM_API_KEY` con la key gratuita de Last.fm.
-3. Las claves de Ticketmaster, OpenWeather, Genius y Musixmatch.
+3. Las claves de Ticketmaster, OpenWeather y Genius. Musixmatch es opcional.
 4. Opcionalmente, las variables de Spotify si decides reactivarlo.
 
 ## Estructura
@@ -221,7 +222,8 @@ eventradar/
 - Last.fm necesita que el usuario tenga scrobbles para calcular una afinidad útil.
 - La instancia pública de OSRM no cubre rutas intercontinentales. La app rechaza rutas cuyo trayecto no llega al destino real y muestra un mensaje en lugar de inventar un recorrido.
 - Genius puede responder `401` si el token no es válido; la ficha del artista indica el error.
-- Musixmatch puede limitar el acceso al fragmento de letras según el plan de la cuenta.
+- LRCLIB puede responder `503` si está saturado; la app reintenta una vez y muestra un mensaje para reintentar.
+- Si configuras Musixmatch, su plan gratuito suele devolver solo fragmentos de letra.
 - Las APIs externas pueden fallar o limitar solicitudes; la app no sustituye esos datos con contenido ficticio.
 
 ## Créditos

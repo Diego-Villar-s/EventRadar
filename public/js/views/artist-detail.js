@@ -26,6 +26,8 @@ export class ArtistDetailView {
     this.selectedTrack = null;
     this.lyrics = null;
     this.lyricsError = null;
+    this.lyricsSource = null;
+    this.lyricsSynced = false;
     this.lyricsLoading = false;
     this.lyricsRequest = 0;
     this.segmented = null;
@@ -182,7 +184,7 @@ export class ArtistDetailView {
           <section class="artist-sing-panel">
             <div class="artist-sing-glow"></div>
             <div class="artist-sing-header">
-              <div class="artist-sing-status"><span class="artist-sing-dot"></span><span class="artist-sing-label">Letra · Musixmatch</span></div>
+              <div class="artist-sing-status"><span class="artist-sing-dot"></span><span class="artist-sing-label" id="lyricsSourceLabel">Letra · LRCLIB</span></div>
               ${this.selectedTrack ? `<span class="artist-hero-badge">${escapeHtml(this.selectedTrack.name)}</span>` : ''}
             </div>
             <div id="lyricsPanel">${this.renderLyricsPanel()}</div>
@@ -228,7 +230,7 @@ export class ArtistDetailView {
       return emptyState({
         icon: 'lyrics',
         title: 'Letra no disponible',
-        message: this.lyricsError.message || 'Musixmatch no devolvió la letra.',
+        message: this.lyricsError.message || 'No se pudo cargar la letra.',
         action: '<button class="event-card-ref-btn glass" type="button" data-action="retry-lyrics">Reintentar</button>'
       });
     }
@@ -240,10 +242,15 @@ export class ArtistDetailView {
       });
     }
 
+    const isMusixmatch = this.lyricsSource === 'musixmatch';
+    const sourceNote = isMusixmatch
+      ? 'Fragmento gratuito proporcionado por Musixmatch. La letra completa puede requerir una licencia.'
+      : `Letra completa proporcionada por LRCLIB de forma gratuita${this.lyricsSynced ? ' (también disponible en versión sincronizada)' : ''}.`;
+
     return `
       <div class="artist-lyrics-text">${escapeHtml(this.lyrics).replace(/\n/g, '<br>')}</div>
       ${this.lyricsDisclaimer ? `<p class="artist-lyrics-disclaimer">${escapeHtml(this.lyricsDisclaimer)}</p>` : ''}
-      <p class="artist-lyrics-disclaimer">Fragmento gratuito proporcionado por Musixmatch. La letra completa puede requerir una licencia.</p>
+      <p class="artist-lyrics-disclaimer">${sourceNote}</p>
     `;
   }
 
@@ -305,6 +312,8 @@ export class ArtistDetailView {
     this.lyricsLoading = true;
     this.lyricsError = null;
     this.lyrics = null;
+    this.lyricsSource = null;
+    this.lyricsSynced = false;
     this.updateLyricsPanel();
 
     const result = await getArtistLyrics(this.artist.name, this.selectedTrack.name);
@@ -312,6 +321,8 @@ export class ArtistDetailView {
     this.lyricsLoading = false;
     this.lyrics = result.lyrics || null;
     this.lyricsDisclaimer = result.disclaimer || null;
+    this.lyricsSource = result.source || 'lrclib';
+    this.lyricsSynced = Boolean(result.syncedLyrics);
     this.lyricsError = result.error ? result.error : null;
     this.updateLyricsPanel();
   }
@@ -319,6 +330,10 @@ export class ArtistDetailView {
   updateLyricsPanel() {
     const panel = this.container.querySelector('#lyricsPanel');
     if (panel) panel.innerHTML = this.renderLyricsPanel();
+    const sourceLabel = this.container.querySelector('#lyricsSourceLabel');
+    if (sourceLabel) {
+      sourceLabel.textContent = this.lyricsSource === 'musixmatch' ? 'Letra · Musixmatch' : 'Letra · LRCLIB';
+    }
   }
 
   selectTrack(index) {
