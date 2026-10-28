@@ -6,78 +6,92 @@ class SpotifyPlayer {
     this.subtitleEl = document.getElementById('miniPlayerSubtitle');
     this.spotifyBtn = document.getElementById('miniPlayerSpotify');
     this.embedContainer = document.getElementById('spotifyEmbedContainer');
+    this.api = null;
     this.controller = null;
     this.currentTrack = null;
+    this.pendingUri = null;
     this.isPlaying = false;
-    
+
     this.init();
   }
-  
+
   init() {
-    if (window.SpotifyIframeApi) {
-      window.onSpotifyIframeApiReady = (IFrameAPI) => {
-        const options = {
-          uri: 'spotify:playlist:37i9dQZF1DX4dyzvuaRJ0n',
-          width: '100%',
-          height: '80'
-        };
-        const callback = (EmbedController) => {
-          this.controller = EmbedController;
-          this.controller.addListener('playback_update', e => {
-            this.isPlaying = !e.data.isPaused;
-            this.updatePlayButton();
-          });
-        };
-        IFrameAPI.createController(this.embedContainer, options, callback);
-      };
-    }
-    
-    if (this.playBtn) {
-      this.playBtn.addEventListener('click', () => {
-        if (this.controller) {
-          if (this.isPlaying) {
-            this.controller.pause();
-          } else {
-            this.controller.play();
-          }
-        }
-      });
-    }
-    
-    if (this.spotifyBtn) {
-      this.spotifyBtn.addEventListener('click', () => {
-        if (this.currentTrack?.spotifyUrl) {
-          window.open(this.currentTrack.spotifyUrl, '_blank');
-        } else {
-          window.open('https://open.spotify.com', '_blank');
-        }
-      });
-    }
+    this.updateControls();
+
+    window.onSpotifyIframeApiReady = (IFrameAPI) => this.onApiReady(IFrameAPI);
+    if (window.SpotifyIframeApi) this.onApiReady(window.SpotifyIframeApi);
+
+    this.playBtn?.addEventListener('click', () => {
+      if (!this.controller) return;
+      if (this.isPlaying) this.controller.pause();
+      else this.controller.play();
+    });
+
+    this.spotifyBtn?.addEventListener('click', () => {
+      const url = this.currentTrack?.externalUrl;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    });
   }
-  
-  playTrack(track) {
-    this.currentTrack = track;
-    if (this.element) this.element.style.display = 'flex';
-    if (this.titleEl) this.titleEl.textContent = track.name || 'Escuchando previa';
-    if (this.subtitleEl) this.subtitleEl.textContent = track.artist || 'EventRadar';
-    
-    if (this.controller && track.uri) {
-      this.controller.loadUri(track.uri);
+
+  onApiReady(IFrameAPI) {
+    if (this.api) return;
+    this.api = IFrameAPI;
+    if (this.pendingUri) this.createController(this.pendingUri);
+  }
+
+  createController(uri) {
+    if (!this.api || !this.embedContainer) return;
+    if (this.controller) {
+      this.controller.loadUri(uri);
       this.controller.play();
-    } else if (track.spotifyId) {
-      if (this.controller) {
-        this.controller.loadUri(`spotify:track:${track.spotifyId}`);
+      return;
+    }
+
+    this.pendingUri = uri;
+    this.api.createController(
+      this.embedContainer,
+      { uri, width: '100%', height: '80' },
+      (EmbedController) => {
+        this.controller = EmbedController;
+        this.controller.addListener('playback_update', (event) => {
+          this.isPlaying = !event.data.isPaused;
+          this.updatePlayButton();
+        });
+        this.updateControls();
         this.controller.play();
       }
+    );
+  }
+
+  playTrack(track = {}) {
+    this.currentTrack = track;
+    if (this.element) this.element.style.display = 'flex';
+    if (this.titleEl) this.titleEl.textContent = track.name || 'Pista de Spotify';
+    if (this.subtitleEl) this.subtitleEl.textContent = track.artist || 'EventRadar';
+    this.updateControls();
+
+    if (track.uri) {
+      this.pendingUri = track.uri;
+      if (this.api) this.createController(track.uri);
     }
   }
-  
+
+  updateControls() {
+    if (this.playBtn) {
+      this.playBtn.disabled = !this.controller;
+      this.playBtn.title = this.controller ? 'Reproducir o pausar' : 'El reproductor de Spotify aún no está disponible';
+    }
+    if (this.spotifyBtn) {
+      this.spotifyBtn.disabled = !this.currentTrack?.externalUrl;
+      this.spotifyBtn.title = this.currentTrack?.externalUrl ? 'Abrir en Spotify' : 'Abre una pista para habilitar este botón';
+    }
+    this.updatePlayButton();
+  }
+
   updatePlayButton() {
     if (!this.playBtn) return;
     const icon = this.playBtn.querySelector('.material-symbols-outlined');
-    if (icon) {
-      icon.textContent = this.isPlaying ? 'pause' : 'play_arrow';
-    }
+    if (icon) icon.textContent = this.isPlaying ? 'pause' : 'play_arrow';
   }
 }
 

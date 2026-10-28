@@ -1,27 +1,42 @@
 import { router } from './router.js';
-import { initAuth } from './api.js';
+import { initAuth, initNavLocation } from './api.js';
 import './spotify-player.js';
 
-// Initialize the app
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('🎵 EventRadar & Festival Match initialized');
-  
-  // Initialize auth
-  initAuth();
-  
-  // Initialize router
-  router.init();
-  
-  // Handle Spotify callback
+function notify(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.setAttribute('role', 'status');
+  toast.style.cssText = [
+    'position:fixed',
+    'left:50%',
+    'bottom:6rem',
+    'transform:translateX(-50%)',
+    'z-index:300',
+    'padding:.75rem 1.1rem',
+    'border-radius:9999px',
+    'font-size:.8125rem',
+    'font-weight:600',
+    'font-family:var(--font-sans,system-ui)',
+    'box-shadow:0 10px 30px rgba(0,0,0,.45)',
+    'border:1px solid rgba(255,255,255,.14)',
+    type === 'error' ? 'background:#3a1114;color:#ffb4ab' : 'background:#10261a;color:#7bf1a8'
+  ].join(';');
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   const hash = window.location.hash;
+
   if (hash.includes('callback=success')) {
-    alert('¡Conectado con Spotify correctamente!');
-    window.history.replaceState({}, document.title, window.location.pathname);
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
+    window.history.replaceState({}, document.title, `${window.location.pathname}#/inicio`);
+    notify('Sesión de Spotify conectada.');
   } else if (hash.includes('callback=error')) {
-    alert('Error al conectar con Spotify');
-    window.history.replaceState({}, document.title, window.location.pathname);
+    window.history.replaceState({}, document.title, `${window.location.pathname}#/inicio`);
+    notify('No se pudo completar la conexión con Spotify.', 'error');
   }
+
+  initAuth();
+  initNavLocation();
+  await router.init();
 });

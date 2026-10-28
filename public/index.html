@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="/css/reference-route.css">
     <link rel="stylesheet" href="/css/reference-weather.css">
     <link rel="stylesheet" href="/css/reference-artist.css">
+    <link rel="stylesheet" href="/css/views.css">
 </head>
 <body>
     <!-- Navigation -->
@@ -35,26 +36,22 @@
                     <span class="nav-logo-text">EventRadar</span>
                 </div>
                 <div class="nav-divider"></div>
-                <button class="nav-location" id="navLocationBtn">
-                    <span class="material-symbols-outlined">near_me</span>
+                <button class="nav-location" id="navLocationBtn" type="button" aria-label="Usar mi ubicación actual" title="Usar mi ubicación actual">
+                    <span class="material-symbols-outlined">my_location</span>
                     <span id="navLocationText">Seleccionar ubicación</span>
-                    <span class="material-symbols-outlined">expand_more</span>
                 </button>
             </div>
             
-            <nav class="seg" id="mainNavSeg">
-                <span class="seg-thumb" id="mainNavThumb"></span>
-                <a href="#/match" class="seg-item" data-route="match">Radar</a>
-                <a href="#/ruta/demo" class="seg-item" data-route="ruta">Rutas & Acceso</a>
-                <a href="#/clima/demo" class="seg-item" data-route="clima">Clima</a>
-                <a href="#/artista/rosalia" class="seg-item" data-route="artista">Artistas</a>
+            <nav class="seg" id="mainNavSeg" aria-label="Navegación principal">
+                <span class="seg-thumb" id="mainNavThumb" aria-hidden="true"></span>
+                <a href="#/match" class="seg-item" data-route="radar">Radar</a>
+                <a href="#/ruta" class="seg-item" data-route="ruta">Rutas &amp; Acceso</a>
+                <a href="#/clima" class="seg-item" data-route="clima">Clima</a>
+                <a href="#/artista" class="seg-item" data-route="artista">Artistas</a>
             </nav>
             
             <div class="nav-right">
-                <button class="nav-search-btn">
-                    <span class="material-symbols-outlined">search</span>
-                </button>
-                <button class="btn-spotify" id="spotifyLoginBtn">
+                <button class="btn-spotify" id="spotifyLoginBtn" type="button">
                     <span class="material-symbols-outlined">login</span>
                     <span>Iniciar sesión con Spotify</span>
                 </button>
@@ -89,40 +86,34 @@
                 </div>
             </div>
             <div class="mini-player-controls">
-                <button class="mini-player-btn hidden-mobile" id="miniPlayerPrev">
-                    <span class="material-symbols-outlined">skip_previous</span>
-                </button>
-                <button class="mini-player-play" id="miniPlayerPlay">
+                <button class="mini-player-play" id="miniPlayerPlay" type="button" aria-label="Reproducir o pausar">
                     <span class="material-symbols-outlined">play_arrow</span>
                 </button>
-                <button class="mini-player-btn hidden-mobile" id="miniPlayerNext">
-                    <span class="material-symbols-outlined">skip_next</span>
-                </button>
                 <div class="mini-player-divider"></div>
-                <button class="mini-player-spotify" id="miniPlayerSpotify" title="Abrir en Spotify">
+                <button class="mini-player-spotify" id="miniPlayerSpotify" type="button" title="Abrir en Spotify" aria-label="Abrir en Spotify">
                     <span class="material-symbols-outlined">open_in_new</span>
                     <span>Spotify</span>
                 </button>
             </div>
         </div>
-        <div id="spotifyEmbedContainer" style="width: 0; height: 0; overflow: hidden;"></div>
+        <div id="spotifyEmbedContainer" aria-hidden="true" style="position: fixed; left: -10000px; top: 0; width: 320px; height: 80px; opacity: 0; pointer-events: none;"></div>
     </aside>
     
     <!-- Mobile Bottom Nav -->
     <nav class="mobile-nav">
-        <a href="#/match" class="mobile-nav-link" data-route="match">
+        <a href="#/match" class="mobile-nav-link" data-route="radar">
             <span class="material-symbols-outlined">radar</span>
             <span>Radar</span>
         </a>
-        <a href="#/ruta/demo" class="mobile-nav-link" data-route="ruta">
+        <a href="#/ruta" class="mobile-nav-link" data-route="ruta">
             <span class="material-symbols-outlined">route</span>
             <span>Ruta</span>
         </a>
-        <a href="#/clima/demo" class="mobile-nav-link" data-route="clima">
+        <a href="#/clima" class="mobile-nav-link" data-route="clima">
             <span class="material-symbols-outlined">cloud</span>
             <span>Clima</span>
         </a>
-        <a href="#/artista/rosalia" class="mobile-nav-link" data-route="artista">
+        <a href="#/artista" class="mobile-nav-link" data-route="artista">
             <span class="material-symbols-outlined">mic</span>
             <span>Artista</span>
         </a>

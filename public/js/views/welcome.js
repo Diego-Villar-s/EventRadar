@@ -1,71 +1,108 @@
 import { getEvents } from '../api.js';
+import { artistHash, emptyState, escapeHtml, eventImage, formatEventDate, safeHttpUrl } from '../utils.js';
 
 export class WelcomeView {
   constructor(container) {
     this.container = container;
     this.events = [];
   }
-  
+
   async render() {
-    try {
-      this.container.innerHTML = `
-        <section style="padding: 7rem 1.5rem 2rem; max-width: 1200px; margin: 0 auto; text-align: center;">
-          <div style="margin-bottom: 3rem;">
-            <h1 style="font-size: 2.5rem; font-weight: 800; color: white; margin-bottom: 1rem; letter-spacing: -0.02em;">EventRadar & Festival Match</h1>
-            <p style="font-size: 1.125rem; color: rgba(255,255,255,0.7); margin-bottom: 2rem;">Descubre festivales que encajan con tu música en Spotify</p>
-            <button id="welcomeSpotifyBtn" style="background: #1DB954; color: white; border: none; padding: 0.875rem 2rem; border-radius: 9999px; font-size: 0.9375rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-family: inherit;">
-              <span class="material-symbols-outlined">login</span>
-              Iniciar sesión con Spotify
-            </button>
-          </div>
-          
-          <div style="margin-top: 4rem;">
-            <h2 style="font-size: 1.5rem; font-weight: 700; color: white; margin-bottom: 1.5rem; text-align: left;">Eventos en modo demo</h2>
-            <div id="welcomeEvents" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; text-align: left;">
-              <div style="padding: 2rem; text-align: center; color: rgba(255,255,255,0.5);">Cargando eventos...</div>
+    this.container.innerHTML = `
+      <section class="welcome-hero">
+        <span class="welcome-kicker"><span class="material-symbols-outlined">radar</span> EventRadar &amp; Festival Match</span>
+        <h1>Descubre los conciertos que encajan con tu música</h1>
+        <p>Conecta tu cuenta de Spotify para calcular la afinidad real con cada evento, planificar tu ruta y revisar el pronóstico del recinto.</p>
+        <div class="welcome-actions">
+          <button class="welcome-login" id="welcomeSpotifyBtn" type="button">
+            <span class="material-symbols-outlined">login</span>
+            Iniciar sesión con Spotify
+          </button>
+          <a class="welcome-secondary" href="#/match">Explorar eventos sin conectar</a>
+        </div>
+      </section>
+
+      <section class="welcome-events">
+        <div class="events-header">
+          <h2 class="events-title">Próximos eventos <span class="events-count" id="welcomeCount">—</span></h2>
+          <span class="events-sort">Datos de Ticketmaster</span>
+        </div>
+        <div id="welcomeEvents" class="events-grid no-sidebar">
+          <div class="view-loading" role="status"><span class="material-symbols-outlined">progress_activity</span><span>Cargando eventos…</span></div>
+        </div>
+      </section>
+    `;
+
+    this.onClick = (event) => {
+      const loginButton = event.target.closest('#welcomeSpotifyBtn');
+      if (loginButton) {
+        window.location.href = '/auth/login';
+      }
+    };
+    this.container.addEventListener('click', this.onClick);
+
+    await this.loadEvents();
+  }
+
+  async loadEvents() {
+    const result = await getEvents({ size: 6 });
+    this.events = result.events || [];
+    const list = this.container.querySelector('#welcomeEvents');
+    const count = this.container.querySelector('#welcomeCount');
+    if (!list) return;
+    if (count) count.textContent = String(this.events.length);
+
+    if (result.error) {
+      list.innerHTML = emptyState({
+        icon: 'cloud_off',
+        title: 'No se pudieron cargar los eventos',
+        message: result.error.message || 'Revisa la configuración de Ticketmaster e inténtalo de nuevo.',
+        action: '<button class="event-card-ref-btn glass" type="button" data-retry>Reintentar</button>'
+      });
+      list.querySelector('[data-retry]')?.addEventListener('click', () => this.loadEvents());
+      return;
+    }
+
+    if (this.events.length === 0) {
+      list.innerHTML = emptyState({
+        icon: 'event_busy',
+        title: 'No hay eventos próximos',
+        message: 'Ticketmaster no devolvió eventos de música para las fechas consultadas.'
+      });
+      return;
+    }
+
+    list.innerHTML = this.events.map((event) => {
+      const image = eventImage(event);
+      const ticketUrl = safeHttpUrl(event.url);
+      const firstArtist = event.artists?.[0]?.name;
+      return `
+        <article class="apple-glass-card welcome-event-card">
+          ${image
+            ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(event.name)}" loading="lazy">`
+            : '<div class="event-image-fallback" aria-hidden="true"><span class="material-symbols-outlined">music_note</span></div>'}
+          <div class="welcome-event-body">
+            <span class="event-card-ref-badge-left">${escapeHtml(formatEventDate(event))}</span>
+            <h3>${escapeHtml(event.name)}</h3>
+            <p><span class="material-symbols-outlined">location_on</span>${escapeHtml(event.venue || 'Recinto por confirmar')}${event.city ? ` · ${escapeHtml(event.city)}` : ''}</p>
+            ${firstArtist ? `<a class="welcome-artist-link" href="${artistHash(firstArtist)}">${escapeHtml(firstArtist)}</a>` : ''}
+            <div class="welcome-event-actions">
+              <button class="event-card-ref-btn white" type="button" data-login>Conectar para ver Match</button>
+              ${ticketUrl ? `<a class="event-card-ref-btn glass" href="${escapeHtml(ticketUrl)}" target="_blank" rel="noopener noreferrer">Entradas</a>` : ''}
             </div>
           </div>
-        </section>
+        </article>
       `;
-      
-      document.getElementById('welcomeSpotifyBtn').addEventListener('click', () => {
+    }).join('');
+
+    list.querySelectorAll('[data-login]').forEach((button) => {
+      button.addEventListener('click', () => {
         window.location.href = '/auth/login';
       });
-      
-      await this.loadEvents();
-    } catch (err) {
-      console.error('WelcomeView render error:', err);
-      this.container.innerHTML = `<div style="padding: 2rem; color: white; text-align: center;"><h2>Bienvenido</h2><p>EventRadar & Festival Match</p><button onclick="window.location.href='/auth/login'" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #1DB954; color: white; border: none; border-radius: 9999px;">Iniciar sesión con Spotify</button></div>`;
-    }
+    });
   }
-  
-  async loadEvents() {
-    try {
-      const result = await getEvents();
-      this.events = result.events || [];
-      const container = document.getElementById('welcomeEvents');
-      
-      if (this.events.length === 0) {
-        container.innerHTML = '<div style="padding: 2rem; text-align: center; color: rgba(255,255,255,0.5);">No hay eventos disponibles</div>';
-        return;
-      }
-      
-      container.innerHTML = this.events.slice(0, 6).map(event => `
-        <article style="background: rgba(28, 28, 30, 0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 1rem; overflow: hidden;">
-          <img src="${event.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800'}" alt="${event.name}" style="width: 100%; height: 150px; object-fit: cover;">
-          <div style="padding: 1rem;">
-            <h3 style="color: white; font-weight: 600; margin-bottom: 0.5rem;">${event.name}</h3>
-            <p style="color: rgba(255,255,255,0.6); font-size: 0.875rem; margin-bottom: 0.75rem;">${event.venue} • ${event.city}</p>
-            <button onclick="window.location.href='/auth/login'" style="width: 100%; padding: 0.5rem; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 0.5rem; cursor: pointer; font-family: inherit;">Conectar para ver Match</button>
-          </div>
-        </article>
-      `).join('');
-    } catch (e) {
-      console.error(e);
-      const container = document.getElementById('welcomeEvents');
-      if (container) {
-        container.innerHTML = '<div style="padding: 2rem; text-align: center; color: rgba(255,255,255,0.5);">Eventos disponibles en modo demo</div>';
-      }
-    }
+
+  destroy() {
+    if (this.onClick) this.container.removeEventListener('click', this.onClick);
   }
 }

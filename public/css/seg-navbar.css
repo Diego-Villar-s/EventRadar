@@ -13,7 +13,10 @@
   white-space: nowrap;
   transition: color .25s;
 }
-.seg a:hover { color: #fff; }
+.seg a:hover,
+.seg-item:hover,
+.seg-item.active,
+.seg-item[aria-selected="true"] { color: #fff; }
 .seg a[aria-current="page"] { color: #fff; }
 .seg a:visited { color: rgba(235,235,245,.6); }
 .seg {

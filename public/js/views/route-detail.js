@@ -1,292 +1,445 @@
-import { getRoute, geocodeAddress } from '../api.js';
+import { getEvent, getEvents, getRoute, geocodeAddress, reverseGeocode } from '../api.js';
+import { DARK_MAP_FILTER, MAP_ATTRIBUTION, MAP_TILE_SUBDOMAINS, MAP_TILE_URL } from '../config.js';
+import { emptyState, escapeHtml, formatEventDate, formatEventTime } from '../utils.js';
+
+function formatDistance(km) {
+  if (!Number.isFinite(Number(km))) return '—';
+  return Number(km) < 1 ? `${Math.round(Number(km) * 1000)} m` : `${Number(km).toFixed(1)} km`;
+}
+
+function formatMinutes(minutes) {
+  if (!Number.isFinite(Number(minutes))) return '—';
+  const total = Math.round(Number(minutes));
+  if (total < 60) return `${total} min`;
+  return `${Math.floor(total / 60)} h ${total % 60} min`;
+}
+
+function stepInstruction(step) {
+  const type = step.maneuver?.type || 'continue';
+  const modifier = step.maneuver?.modifier || '';
+  const name = step.name ? ` por ${step.name}` : '';
+  const destination = step.destinations ? ` hacia ${step.destinations}` : '';
+
+  if (type === 'depart') return `Sal${name || ' del punto de origen'}`;
+  if (type === 'arrive') return `Llega a ${step.name || 'tu destino'}`;
+  if (type === 'roundabout' || type === 'rotary') return `Entra en la rotonda y toma la salida${name}`;
+  if (type === 'merge') return `Incorpórate${name}`;
+  if (type === 'fork') return `Toma el desvío ${modifier}${name}`;
+  if (type === 'end of road') return `Al final de la vía, gira ${modifier}${name}`;
+  if (modifier) return `Gira ${modifier}${name}${destination}`;
+  return `Continúa${name}${destination}`;
+}
 
 export class RouteDetailView {
-  constructor(container) {
+  constructor(container, props = {}) {
     this.container = container;
+    this.eventId = props.eventId || null;
+    this.event = null;
+    this.error = null;
+    this.origin = this.readOrigin();
+    this.route = null;
+    this.routeError = null;
     this.map = null;
-    this.eventId = null;
-    this.currentMode = 'foot';
-    this.userLocation = null;
-    this.eventLocation = { lat: 41.4128, lng: 2.2208, name: 'Parc del Fòrum' };
+    this.routeLayer = null;
+    this.originMarker = null;
+    this.eventMarker = null;
+    this.handleClick = this.handleClick.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
   }
-  
-  render() {
-    // Get eventId from hash
-    const hash = window.location.hash;
-    const match = hash.match(/#\/ruta\/(.+)/);
-    if (match) {
-      this.eventId = match[1];
+
+  readOrigin() {
+    try {
+      const saved = localStorage.getItem('eventradar.origin');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
     }
-    
+  }
+
+  saveOrigin(origin) {
+    this.origin = origin;
+    try {
+      localStorage.setItem('eventradar.origin', JSON.stringify(origin));
+    } catch {
+      // Sin localStorage la ruta sigue funcionando durante la sesión.
+    }
+  }
+
+  async render() {
+    this.destroyMap();
     this.container.innerHTML = `
-      <div class="route-page" style="padding-top: 5rem;">
-        
+      <div class="route-page">
         <main class="route-main">
-          <!-- Title Section -->
-          <div class="route-title-section">
-            <div>
-              <div class="route-breadcrumb">
-                <span>Primavera Sound 2025</span>
-                <span class="route-breadcrumb-dot">•</span>
-                <span class="route-breadcrumb-highlight">Apple Maps Engine</span>
-              </div>
-              <h1 class="route-title">Rutas y Acceso al Fòrum</h1>
-            </div>
-            <div class="route-status-pill">
-              <div class="route-status-dot-wrapper">
-                <span class="route-status-dot"></span>
-                <span class="route-status-dot-ping"></span>
-              </div>
-              <div class="route-status-text">
-                <span class="route-status-label">Tránsito fluido</span>
-                <div class="route-status-divider"></div>
-                <span class="route-status-time" id="statusTime">24 min</span>
-              </div>
-              <div class="route-status-divider"></div>
-              <span class="route-status-path">Plaça Catalunya → Parc del Fòrum</span>
-            </div>
-          </div>
-          
-          <!-- Segmented Control -->
-          <div class="route-segmented" style="margin-top: 1.5rem;">
-            <button class="route-segment yellow active" data-mode="foot" id="segFoot">
-              <span class="material-symbols-outlined">directions_walk</span>
-              <div class="route-segment-info">
-                <span class="route-segment-label">A pie</span>
-                <span class="route-segment-time">45 min</span>
-                <span class="route-segment-detail">• 4.9 km</span>
-              </div>
-            </button>
-            <button class="route-segment blue" data-mode="driving" id="segDriving">
-              <span class="material-symbols-outlined">directions_car</span>
-              <div class="route-segment-info">
-                <span class="route-segment-label">Auto</span>
-                <span class="route-segment-time">18 min</span>
-                <span class="route-segment-detail">• ~14 €</span>
-              </div>
-            </button>
-            <button class="route-segment green" data-mode="cycling" id="segCycling">
-              <span class="material-symbols-outlined">pedal_bike</span>
-              <div class="route-segment-info">
-                <span class="route-segment-label">Bici</span>
-                <span class="route-segment-time">32 min</span>
-                <span class="route-segment-detail">• 0 €</span>
-              </div>
-            </button>
-            <button class="route-segment purple" data-mode="transit" id="segTransit">
-              <span class="material-symbols-outlined">directions_transit</span>
-              <div class="route-segment-info">
-                <span class="route-segment-label">Transporte</span>
-                <span class="route-segment-time">24 min</span>
-                <span class="route-segment-detail">• ~2.40 €</span>
-              </div>
-            </button>
-          </div>
-          
-          <!-- Main Grid -->
-          <div class="route-grid" style="margin-top: 1.5rem;">
-            <!-- Sidebar -->
-            <div class="route-sidebar">
-              <div class="route-card">
-                <div class="route-card-header">
-                  <div>
-                    <span class="route-card-badge">RUTA RECOMENDADA</span>
-                    <h2 class="route-card-title" id="routeCardTitle">Rambla Poblenou</h2>
-                  </div>
-                  <div class="route-card-time-box">
-                    <div class="route-card-time" id="routeCardTime">45 min</div>
-                    <div class="route-card-dist" id="routeCardDist">4.9 km</div>
-                  </div>
-                </div>
-                <div class="route-steps">
-                  <div class="route-step">
-                    <div class="route-step-number blue">1</div>
-                    <div class="route-step-content">
-                      <div class="route-step-header">
-                        <span class="route-step-title">Salida Centro</span>
-                        <span class="route-step-tag gray">10 min</span>
-                      </div>
-                      <span class="route-step-desc">Carrer de Casp dirección Glòries</span>
-                    </div>
-                  </div>
-                  <div class="route-step">
-                    <div class="route-step-number purple">2</div>
-                    <div class="route-step-content">
-                      <div class="route-step-header">
-                        <span class="route-step-title">Rambla del Poblenou</span>
-                        <span class="route-step-tag gray">2.4 km • 25 min</span>
-                      </div>
-                      <span class="route-step-desc">Eje peatonal iluminado</span>
-                    </div>
-                  </div>
-                  <div class="route-step">
-                    <div class="route-step-number green">3</div>
-                    <div class="route-step-content">
-                      <div class="route-step-header">
-                        <span class="route-step-title">Acceso Puerta Marina</span>
-                        <span class="route-step-tag">Llegada</span>
-                      </div>
-                      <span class="route-step-desc">Ingreso directo a taquillas</span>
-                    </div>
-                  </div>
-                </div>
-                <button class="route-action-btn" id="openGoogleMapsBtn">
-                  <span class="material-symbols-outlined">near_me</span>
-                  <span>Abrir ruta en Google Maps</span>
-                </button>
-              </div>
-              
-              <div class="route-card">
-                <div class="route-card-header" style="padding-bottom: 0.75rem;">
-                  <span class="route-card-badge" style="color: #8E8E93;">PUNTOS CLAVE FÒRUM</span>
-                  <span style="font-size: 0.6875rem; font-weight: 600; color: #30D158;">Abierto</span>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-                  <div style="padding: 0.625rem; border-radius: 0.75rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05);">
-                    <div style="font-size: 0.6875rem; font-weight: 600; color: #BF5AF2;">Acceso VIP</div>
-                    <div style="font-size: 0.75rem; font-weight: 700; color: white; margin-top: 0.125rem;">Puerta 3</div>
-                    <div style="font-size: 0.625rem; color: rgba(255,255,255,0.4);">Sin espera</div>
-                  </div>
-                  <div style="padding: 0.625rem; border-radius: 0.75rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05);">
-                    <div style="font-size: 0.6875rem; font-weight: 600; color: #0A84FF;">Taquillas</div>
-                    <div style="font-size: 0.75rem; font-weight: 700; color: white; margin-top: 0.125rem;">Módulos A-D</div>
-                    <div style="font-size: 0.625rem; color: rgba(255,255,255,0.4);">Canje NFC</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Map Section -->
-            <div class="route-map-section">
-              <div class="route-map-container">
-                <div id="routeMap" class="route-map"></div>
-                <div class="route-map-controls">
-                  <div class="route-map-pill">
-                    <span class="material-symbols-outlined">explore</span>
-                    <span>Vista Satélite Oscuro</span>
-                  </div>
-                  <button class="route-map-btn" id="locateBtn">
-                    <span class="material-symbols-outlined" style="font-size: 1rem;">my_location</span>
-                  </button>
-                </div>
-                <div class="route-map-zoom">
-                  <button class="route-map-zoom-btn" id="zoomInBtn">
-                    <span class="material-symbols-outlined" style="font-size: 1rem;">add</span>
-                  </button>
-                  <div class="route-map-zoom-divider"></div>
-                  <button class="route-map-zoom-btn" id="zoomOutBtn">
-                    <span class="material-symbols-outlined" style="font-size: 1rem;">remove</span>
-                  </button>
-                </div>
-                <div class="route-map-telemetry">
-                  <div class="route-map-telemetry-item">
-                    <span class="route-map-telemetry-label">Distancia</span>
-                    <span class="route-map-telemetry-value" id="telemetryDist">4.9 km</span>
-                  </div>
-                  <div class="route-map-telemetry-divider"></div>
-                  <div class="route-map-telemetry-item">
-                    <span class="route-map-telemetry-label">Llegada</span>
-                    <span class="route-map-telemetry-value green" id="telemetryEta">19:03</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div id="routeContent">
+            <div class="view-loading" role="status"><span class="material-symbols-outlined">progress_activity</span><span>Cargando evento…</span></div>
           </div>
         </main>
       </div>
     `;
-    
-    this.initMap();
-    this.initSegments();
-    this.initControls();
+    this.container.addEventListener('click', this.handleClick);
+    this.container.addEventListener('submit', this.handleSubmit);
+
+    if (!this.eventId) {
+      await this.renderPicker();
+      return;
+    }
+    await this.loadEvent();
   }
-  
-  initMap() {
-    this.map = L.map('routeMap', {
-      center: [41.4128, 2.2208],
-      zoom: 13,
-      zoomControl: false
-    });
-    
-    import('../config.js').then(cfg => {
-      L.tileLayer(cfg.MAP_TILE_URL, {
-        attribution: cfg.MAP_ATTRIBUTION,
-        subdomains: cfg.MAP_TILE_SUBDOMAINS || ['a', 'b', 'c'],
-        maxZoom: 19
-      }).addTo(this.map);
-      if (cfg.DARK_MAP_FILTER) {
-        setTimeout(() => {
-          const pane = document.querySelector('.leaflet-tile-pane');
-          if (pane) pane.style.filter = 'invert(1) hue-rotate(180deg) brightness(.95) contrast(.9) saturate(.6)';
-        }, 100);
-      }
-    });
-    
-    const venueIcon = L.divIcon({
-      className: 'custom-marker',
-      html: `<div style="width: 36px; height: 36px; border-radius: 16px; background: linear-gradient(135deg, #30D158 0%, #10b981 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(48, 209, 88, 0.7);">
-        <span class="material-symbols-outlined" style="color: black; font-size: 20px; font-weight: 700;">stadium</span>
-      </div>`,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18]
-    });
-    
-    L.marker([41.4128, 2.2208], { icon: venueIcon })
-      .addTo(this.map)
-      .bindPopup('<b>Parc del Fòrum</b><br>Primavera Sound 2025');
-  }
-  
-  initSegments() {
-    document.querySelectorAll('.route-segment').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.route-segment').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.currentMode = btn.dataset.mode;
-        
-        const modeData = {
-          foot: { time: '45 min', dist: '4.9 km', title: 'Rambla Poblenou' },
-          driving: { time: '18 min', dist: '14.5 km', title: 'Ronda Litoral' },
-          cycling: { time: '32 min', dist: '6.8 km', title: 'Passeig Marítim' },
-          transit: { time: '24 min', dist: '6.2 km', title: 'Metro L4' }
-        };
-        
-        const data = modeData[this.currentMode] || modeData.foot;
-        document.getElementById('routeCardTime').textContent = data.time;
-        document.getElementById('routeCardDist').textContent = data.dist;
-        document.getElementById('routeCardTitle').textContent = data.title;
-        document.getElementById('statusTime').textContent = data.time;
-        document.getElementById('telemetryDist').textContent = data.dist;
+
+  async renderPicker() {
+    const content = this.container.querySelector('#routeContent');
+    if (!content) return;
+    content.innerHTML = `
+      <div class="route-title-section">
+        <div>
+          <div class="route-breadcrumb"><span>Rutas</span><span class="route-breadcrumb-dot">•</span><span class="route-breadcrumb-highlight">Selecciona un evento</span></div>
+          <h1 class="route-title">Rutas de acceso</h1>
+        </div>
+      </div>
+      <div id="routePicker"><div class="view-loading" role="status"><span class="material-symbols-outlined">progress_activity</span><span>Cargando eventos…</span></div></div>
+    `;
+
+    const result = await getEvents({ size: 10 });
+    const picker = this.container.querySelector('#routePicker');
+    if (!picker) return;
+    if (result.error) {
+      picker.innerHTML = emptyState({
+        icon: 'cloud_off',
+        title: 'No se pudieron cargar los eventos',
+        message: result.error.message
       });
-    });
+      return;
+    }
+    if (!result.events?.length) {
+      picker.innerHTML = emptyState({
+        icon: 'event_busy',
+        title: 'No hay eventos disponibles',
+        message: 'Ticketmaster no devolvió eventos próximos con recinto.'
+      });
+      return;
+    }
+
+    picker.innerHTML = `
+      <div class="event-picker">
+        ${result.events.map((event) => `
+          <a class="event-picker-item" href="#/ruta/${encodeURIComponent(event.id)}">
+            <span class="material-symbols-outlined">location_on</span>
+            <span><strong>${escapeHtml(event.name)}</strong><small>${escapeHtml(event.venue || 'Recinto por confirmar')}${event.city ? ` · ${escapeHtml(event.city)}` : ''}</small></span>
+            <span class="material-symbols-outlined">chevron_right</span>
+          </a>
+        `).join('')}
+      </div>
+    `;
   }
-  
-  initControls() {
-    document.getElementById('locateBtn').addEventListener('click', () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-          const userIcon = L.divIcon({
-            className: 'custom-marker',
-            html: `<div style="width: 28px; height: 28px; border-radius: 50%; background: #0A84FF; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 16px rgba(10, 132, 255, 0.8);">
-              <span class="material-symbols-outlined" style="color: white; font-size: 16px;">navigation</span>
-            </div>`,
-            iconSize: [28, 28],
-            iconAnchor: [14, 14]
-          });
-          L.marker([pos.coords.latitude, pos.coords.longitude], { icon: userIcon })
-            .addTo(this.map)
-            .bindPopup('<b>Tu ubicación</b>');
-          this.map.setView([pos.coords.latitude, pos.coords.longitude], 14);
-          this.userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+
+  async loadEvent() {
+    const result = await getEvent(this.eventId);
+    this.event = result.event;
+    this.error = result.error;
+
+    if (!this.event) {
+      const content = this.container.querySelector('#routeContent');
+      if (content) {
+        content.innerHTML = emptyState({
+          icon: 'wrong_location',
+          title: 'No se pudo cargar el evento',
+          message: this.error?.message || 'El evento no existe o ya no está disponible.',
+          action: '<a class="event-card-ref-btn glass" href="#/ruta">Elegir otro evento</a>'
         });
       }
+      return;
+    }
+
+    this.renderEvent();
+    await this.initMap();
+    if (this.origin && this.hasCoordinates()) {
+      await this.calculateRoute();
+    }
+  }
+
+  hasCoordinates() {
+    return Number.isFinite(Number(this.event?.lat)) && Number.isFinite(Number(this.event?.lng));
+  }
+
+  renderEvent() {
+    this.destroyMap();
+    const content = this.container.querySelector('#routeContent');
+    if (!content) return;
+    const event = this.event;
+    const hasCoords = this.hasCoordinates();
+    const googleOrigin = this.origin ? `${this.origin.lat},${this.origin.lng}` : '';
+    const googleDestination = hasCoords ? `${event.lat},${event.lng}` : '';
+    const googleUrl = hasCoords
+      ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(googleOrigin)}&destination=${encodeURIComponent(googleDestination)}&travelmode=driving`
+      : null;
+
+    content.innerHTML = `
+      <div class="route-title-section">
+        <div>
+          <div class="route-breadcrumb">
+            <a href="#/match">Eventos</a>
+            <span class="route-breadcrumb-dot">•</span>
+            <span class="route-breadcrumb-highlight">${escapeHtml(event.name)}</span>
+          </div>
+          <h1 class="route-title">Ruta hasta ${escapeHtml(event.venue || 'el recinto')}</h1>
+          <p class="route-subtitle">${escapeHtml(formatEventDate(event))}${formatEventTime(event) ? ` · ${escapeHtml(formatEventTime(event))}` : ''} · ${escapeHtml(event.city || 'Ciudad por confirmar')}</p>
+        </div>
+        <a class="route-status-pill" href="#/clima/${encodeURIComponent(event.id)}">
+          <span class="route-status-dot-wrapper"><span class="route-status-dot"></span><span class="route-status-dot-ping"></span></span>
+          <span class="route-status-text">Ver clima</span>
+          <span class="material-symbols-outlined">chevron_right</span>
+        </a>
+      </div>
+
+      <section class="route-origin-card" aria-label="Punto de partida">
+        <div class="route-origin-copy">
+          <span class="material-symbols-outlined">my_location</span>
+          <div>
+            <strong>${this.origin ? 'Origen seleccionado' : 'Elige tu punto de partida'}</strong>
+            <p>${this.origin ? escapeHtml(this.origin.label || 'Ubicación guardada') : 'Usa tu ubicación actual o busca una dirección para calcular la ruta.'}</p>
+          </div>
+        </div>
+        <div class="route-origin-actions">
+          <button class="route-action-btn" type="button" data-action="locate"><span class="material-symbols-outlined">my_location</span> Usar mi ubicación</button>
+          <form class="route-origin-form" id="originForm">
+            <input type="search" name="address" placeholder="Buscar dirección de origen" aria-label="Dirección de origen" autocomplete="off">
+            <button class="route-action-btn" type="submit"><span class="material-symbols-outlined">search</span> Buscar</button>
+          </form>
+        </div>
+      </section>
+
+      ${hasCoords ? `
+        <div class="route-grid">
+          <div class="route-card">
+            <div class="route-card-header">
+              <div>
+                <span class="route-card-badge">Ruta en auto</span>
+                <h2 class="route-card-title" id="routeSummaryTitle">${this.route ? `${formatDistance(this.route.distance)} · ${formatMinutes(this.route.duration)}` : 'Calcula tu ruta'}</h2>
+              </div>
+              <div class="route-card-time-box">
+                <div class="route-card-time" id="routeEta">${this.route ? this.etaText() : '—'}</div>
+                <div class="route-card-dist" id="routeDistance">${this.route ? formatDistance(this.route.distance) : 'Sin calcular'}</div>
+              </div>
+            </div>
+            <div id="routeSteps" class="route-steps">
+              ${this.route ? this.renderSteps() : '<p class="route-empty-inline">Selecciona un origen para ver las indicaciones.</p>'}
+            </div>
+            <div class="route-card-actions">
+              ${googleUrl ? `<a class="route-action-btn" href="${escapeHtml(googleUrl)}" target="_blank" rel="noopener noreferrer"><span class="material-symbols-outlined">open_in_new</span> Abrir en Google Maps</a>` : ''}
+            </div>
+          </div>
+          <div class="route-map-section">
+            <div class="route-map-container">
+              <div id="routeMap" class="route-map${DARK_MAP_FILTER ? ' dark-map' : ''}"></div>
+            </div>
+            <div class="route-map-telemetry">
+              <div class="route-map-telemetry-item"><div class="route-map-telemetry-label">Distancia</div><div class="route-map-telemetry-value" id="telemetryDistance">${this.route ? formatDistance(this.route.distance) : '—'}</div></div>
+              <div class="route-map-telemetry-divider"></div>
+              <div class="route-map-telemetry-item"><div class="route-map-telemetry-label">Duración</div><div class="route-map-telemetry-value green" id="telemetryDuration">${this.route ? formatMinutes(this.route.duration) : '—'}</div></div>
+              <div class="route-map-telemetry-divider"></div>
+              <div class="route-map-telemetry-item"><div class="route-map-telemetry-label">Recinto</div><div class="route-map-telemetry-value">${escapeHtml(event.venue || '—')}</div></div>
+            </div>
+          </div>
+        </div>
+      ` : `
+        ${emptyState({
+          icon: 'wrong_location',
+          title: 'El recinto no tiene coordenadas',
+          message: 'Ticketmaster no proporcionó la ubicación exacta de este recinto, así que no se puede calcular una ruta real.',
+          action: `<a class="event-card-ref-btn glass" href="#/ruta">Elegir otro evento</a>`
+        })}
+        <div class="route-venue-note"><strong>Dirección:</strong> ${escapeHtml([event.address, event.city, event.country].filter(Boolean).join(', ') || 'No disponible')}</div>
+      `}
+    `;
+  }
+
+  etaText() {
+    if (!this.route) return '—';
+    const eta = new Date(Date.now() + this.route.duration * 60000);
+    return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(eta);
+  }
+
+  renderSteps() {
+    const steps = this.route?.legs?.[0]?.steps || [];
+    if (steps.length === 0) {
+      return '<p class="route-empty-inline">OSRM no devolvió indicaciones paso a paso para esta ruta.</p>';
+    }
+    return steps.map((step, index) => `
+      <div class="route-step">
+        <div class="route-step-number ${index === 0 ? 'blue' : index === steps.length - 1 ? 'green' : 'yellow'}">${index + 1}</div>
+        <div class="route-step-content">
+          <div class="route-step-header">
+            <div class="route-step-title">${escapeHtml(stepInstruction(step))}</div>
+            <span class="route-step-tag">${escapeHtml(formatDistance((step.distance || 0) / 1000))}</span>
+          </div>
+          <div class="route-step-desc">${escapeHtml(formatMinutes((step.duration || 0) / 60))}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async initMap() {
+    const container = this.container.querySelector('#routeMap');
+    if (!container) return;
+    if (!window.L) {
+      container.innerHTML = emptyState({
+        icon: 'map',
+        title: 'Mapa no disponible',
+        message: 'No se pudo cargar Leaflet. Revisa la conexión y vuelve a intentarlo.'
+      });
+      return;
+    }
+    if (!this.hasCoordinates()) return;
+
+    this.map = window.L.map(container, { zoomControl: true, scrollWheelZoom: false });
+    window.L.tileLayer(MAP_TILE_URL, {
+      attribution: MAP_ATTRIBUTION,
+      subdomains: MAP_TILE_SUBDOMAINS,
+      maxZoom: 19
+    }).addTo(this.map);
+
+    const eventPoint = [Number(this.event.lat), Number(this.event.lng)];
+    this.map.setView(eventPoint, 13);
+    this.eventMarker = window.L.marker(eventPoint, {
+      icon: window.L.divIcon({ className: 'event-map-pin', html: '<span class="material-symbols-outlined">location_on</span>', iconSize: [34, 34], iconAnchor: [17, 34] })
+    }).addTo(this.map).bindPopup(escapeHtml(this.event.venue || this.event.name));
+
+    if (this.origin) this.addOriginMarker();
+    setTimeout(() => this.map?.invalidateSize(), 0);
+  }
+
+  addOriginMarker() {
+    if (!this.map || !this.origin) return;
+    if (this.originMarker) this.originMarker.remove();
+    this.originMarker = window.L.marker([Number(this.origin.lat), Number(this.origin.lng)], {
+      icon: window.L.divIcon({ className: 'origin-map-pin', html: '<span class="material-symbols-outlined">my_location</span>', iconSize: [30, 30], iconAnchor: [15, 15] })
+    }).addTo(this.map).bindPopup(escapeHtml(this.origin.label || 'Tu ubicación'));
+  }
+
+  async calculateRoute() {
+    if (!this.event || !this.origin || !this.hasCoordinates()) return;
+    const origin = this.origin;
+    this.setRouteStatus('Calculando ruta…', false);
+    const result = await getRoute(origin.lng, origin.lat, this.event.lng, this.event.lat, 'driving');
+    this.route = result.route;
+    this.routeError = result.error;
+
+    if (!this.route) {
+      this.setRouteStatus(this.routeError?.message || 'No se pudo calcular la ruta.', true);
+      return;
+    }
+
+    this.updateRouteUI();
+    this.drawRoute();
+  }
+
+  updateRouteUI() {
+    const title = this.container.querySelector('#routeSummaryTitle');
+    const eta = this.container.querySelector('#routeEta');
+    const distance = this.container.querySelector('#routeDistance');
+    const steps = this.container.querySelector('#routeSteps');
+    const telemetryDistance = this.container.querySelector('#telemetryDistance');
+    const telemetryDuration = this.container.querySelector('#telemetryDuration');
+
+    if (title) title.textContent = `${formatDistance(this.route.distance)} · ${formatMinutes(this.route.duration)}`;
+    if (eta) eta.textContent = this.etaText();
+    if (distance) distance.textContent = formatDistance(this.route.distance);
+    if (steps) steps.innerHTML = this.renderSteps();
+    if (telemetryDistance) telemetryDistance.textContent = formatDistance(this.route.distance);
+    if (telemetryDuration) telemetryDuration.textContent = formatMinutes(this.route.duration);
+  }
+
+  drawRoute() {
+    if (!this.map || !this.route?.geometry?.coordinates) return;
+    if (this.routeLayer) this.routeLayer.remove();
+    const latLngs = this.route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+    this.routeLayer = window.L.polyline(latLngs, {
+      color: '#0a84ff',
+      weight: 5,
+      opacity: 0.9
+    }).addTo(this.map);
+    this.map.fitBounds(this.routeLayer.getBounds(), { padding: [40, 40] });
+    this.addOriginMarker();
+  }
+
+  setRouteStatus(message, isError) {
+    const steps = this.container.querySelector('#routeSteps');
+    if (!steps) return;
+    steps.innerHTML = `<p class="route-empty-inline ${isError ? 'route-error-inline' : ''}">${escapeHtml(message)}</p>`;
+  }
+
+  async useCurrentLocation() {
+    if (!navigator.geolocation) {
+      this.setRouteStatus('Tu navegador no permite geolocalización.', true);
+      return;
+    }
+    this.setRouteStatus('Obteniendo tu ubicación…', false);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const reverse = await reverseGeocode(latitude, longitude);
+        this.saveOrigin({
+          lat: latitude,
+          lng: longitude,
+          label: reverse.result?.address?.city || reverse.result?.address?.town || reverse.result?.displayName || 'Mi ubicación'
+        });
+        this.route = null;
+        this.routeError = null;
+        this.renderEvent();
+        await this.initMap();
+        await this.calculateRoute();
+      },
+      () => this.setRouteStatus('No se pudo obtener tu ubicación. Revisa los permisos del navegador.', true),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
+  }
+
+  async searchOrigin(address) {
+    if (!address || !address.trim()) return;
+    this.setRouteStatus('Buscando la dirección…', false);
+    const result = await geocodeAddress(address);
+    if (!result.result) {
+      this.setRouteStatus(result.error?.message || 'No se encontró esa dirección.', true);
+      return;
+    }
+    this.saveOrigin({
+      lat: result.result.lat,
+      lng: result.result.lng,
+      label: result.result.displayName
     });
-    
-    document.getElementById('zoomInBtn').addEventListener('click', () => this.map.zoomIn());
-    document.getElementById('zoomOutBtn').addEventListener('click', () => this.map.zoomOut());
-    
-    document.getElementById('openGoogleMapsBtn').addEventListener('click', () => {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${this.eventLocation.lat},${this.eventLocation.lng}&travelmode=${this.currentMode === 'driving' ? 'driving' : this.currentMode === 'cycling' ? 'bicycling' : this.currentMode === 'transit' ? 'transit' : 'walking'}`;
-      window.open(url, '_blank');
-    });
+    this.route = null;
+    this.routeError = null;
+    this.renderEvent();
+    await this.initMap();
+    await this.calculateRoute();
+  }
+
+  handleClick(event) {
+    if (event.target.closest('[data-action="locate"]')) {
+      this.useCurrentLocation();
+    }
+  }
+
+  handleSubmit(event) {
+    if (event.target.id !== 'originForm') return;
+    event.preventDefault();
+    const input = event.target.querySelector('input[name="address"]');
+    this.searchOrigin(input?.value || '');
+  }
+
+  destroyMap() {
+    if (this.map) {
+      this.map.remove();
+      this.map = null;
+    }
+    this.routeLayer = null;
+    this.originMarker = null;
+    this.eventMarker = null;
+  }
+
+  destroy() {
+    this.container.removeEventListener('click', this.handleClick);
+    this.container.removeEventListener('submit', this.handleSubmit);
+    this.destroyMap();
   }
 }

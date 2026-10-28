@@ -1,0 +1,217 @@
+/* Layout overrides that must load after the reference styles. */
+.match-main,
+.route-main,
+.weather-main,
+.artist-main {
+  padding-top: 0;
+}
+
+.match-page,
+.route-page,
+.weather-page,
+.artist-page {
+  padding-top: 0;
+}
+
+.route-map-section {
+  position: relative;
+}
+
+.event-card-ref-image {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(10, 132, 255, 0.16), transparent 45%),
+    linear-gradient(140deg, #15171c, #0b0c10);
+}
+
+@media (max-width: 1024px) {
+  .nav-location {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  #mainNavSeg {
+    display: none;
+  }
+
+  .nav-container {
+    padding-right: 0.75rem;
+  }
+
+  .match-main,
+  .route-main,
+  .weather-main {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .artist-main {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .affinity-hero {
+    padding: 1rem;
+  }
+
+  .affinity-hero-grid {
+    gap: 1rem;
+  }
+
+  .affinity-user {
+    align-items: flex-start;
+  }
+
+  .affinity-user-avatar {
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+  }
+
+  .affinity-user-info h1 {
+    font-size: 1.15rem !important;
+  }
+
+  .affinity-metrics {
+    width: 100%;
+  }
+
+  .affinity-breakdown {
+    flex: 1;
+  }
+
+  .event-card-ref-image {
+    height: 18rem;
+  }
+
+  .event-card-ref-content {
+    bottom: 0.75rem;
+    left: 0.75rem;
+    right: 0.75rem;
+  }
+
+  .event-card-ref-actions {
+    align-items: flex-start;
+  }
+
+  .event-card-ref-price {
+    display: none;
+  }
+
+  .route-map-container {
+    height: 340px;
+  }
+
+  .route-map-telemetry {
+    display: none;
+  }
+
+  .weather-hero-temp-value {
+    font-size: 6rem;
+  }
+
+  .weather-hero-badge {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .weather-hourly-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  .weather-metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-actions {
+    flex-direction: column;
+  }
+
+  .welcome-login,
+  .welcome-secondary {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .affinity-user {
+    flex-direction: column;
+  }
+
+  .affinity-ring-group {
+    align-items: center;
+  }
+
+  .filters-bar {
+    align-items: stretch;
+  }
+
+  .filters-selectors {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .filter-search,
+  .filters-pill {
+    width: 100%;
+  }
+
+  .event-card-ref-badges {
+    left: 0.6rem;
+    right: 0.6rem;
+    top: 0.6rem;
+  }
+
+  .event-card-ref-badge-left {
+    max-width: 62%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .event-card-ref-content {
+    gap: 0.4rem;
+  }
+
+  .event-card-ref-meta {
+    font-size: 0.68rem;
+  }
+
+  .event-card-ref-buttons {
+    gap: 0.3rem;
+  }
+
+  .event-card-ref-btn {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.65rem;
+  }
+
+  .artist-tabs .seg-item {
+    min-width: 5.8rem;
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+
+  .artist-hero {
+    padding: 1rem;
+  }
+
+  .artist-hero-left {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .artist-hero-avatar {
+    width: 6rem;
+    height: 6rem;
+  }
+
+  .weather-hero-meta {
+    flex-direction: column;
+  }
+
+  .weather-hourly-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
