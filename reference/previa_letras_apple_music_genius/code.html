@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Previa &amp; Letras Vivas | Apple Music Sing Style</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    @layer base {
+      html, body { margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+    }
+    ::-webkit-scrollbar { display: none; }
+    .glass-panel {
+      background: rgba(31, 31, 33, 0.65);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card {
+      background: rgba(42, 42, 44, 0.5);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .sing-glow {
+      text-shadow: 0 0 28px rgba(170, 199, 255, 0.55);
+    }
+    .apple-blur-bg {
+      background: radial-gradient(circle at 20% 30%, rgba(62, 144, 255, 0.18) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 20%, rgba(200, 99, 251, 0.16) 0%, transparent 45%),
+                  radial-gradient(circle at 50% 80%, rgba(71, 226, 102, 0.12) 0%, transparent 60%),
+                  #131315;
+    }
+  </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "background": "#131315",
+            "on-background": "#e4e2e4",
+            "primary": "#aac7ff",
+            "primary-container": "#3e90ff",
+            "secondary": "#47e266",
+            "secondary-container": "#09bf49",
+            "surface": "#131315",
+            "surface-container": "#1f1f21",
+            "surface-container-high": "#2a2a2c",
+            "surface-container-highest": "#353437",
+            "surface-container-low": "#1b1b1d",
+            "surface-container-lowest": "#0e0e10",
+            "on-surface": "#e4e2e4",
+            "on-surface-variant": "#8b91a0",
+            "tertiary": "#e9b3ff",
+            "tertiary-container": "#c863fb"
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="apple-blur-bg font-sans text-on-surface antialiased min-h-screen selection:bg-primary-container selection:text-white pb-32">
+<!-- Apple Frost Top Navigation Bar -->
+<header class="fixed top-0 left-0 w-full z-50 glass-panel border-b border-white/5">
+<div class="h-16 w-full max-w-7xl mx-auto px-6 flex items-center justify-between gap-4">
+<!-- App Brand -->
+<div class="flex items-center gap-6">
+<a class="flex items-center gap-2.5" href="#">
+<div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-container via-tertiary-container to-secondary flex items-center justify-center shadow-lg shadow-primary-container/20">
+<span class="material-symbols-outlined text-white text-lg">graphic_eq</span>
+</div>
+<span class="font-bold text-base tracking-tight text-white">EventRadar</span>
+</a>
+<!-- Apple Segmented Pill Nav -->
+<nav class="hidden md:flex items-center bg-black/40 p-1 rounded-full border border-white/5 text-xs font-semibold">
+<a class="px-3.5 py-1.5 rounded-full text-white/50 hover:text-white transition-all" href="#">Radar</a>
+<a class="px-3.5 py-1.5 rounded-full text-white/50 hover:text-white transition-all" href="#">Itinerario</a>
+<a class="px-3.5 py-1.5 rounded-full bg-white/15 text-white shadow-sm" href="#">Previa &amp; Sing</a>
+<a class="px-3.5 py-1.5 rounded-full text-white/50 hover:text-white transition-all" href="#">Entradas</a>
+</nav>
+</div>
+<!-- Quick Search & Status -->
+<div class="flex items-center gap-3">
+<div class="hidden sm:flex items-center gap-2 bg-white/5 px-3.5 py-1.5 rounded-full border border-white/10 text-xs text-white/70">
+<span class="material-symbols-outlined text-sm text-secondary">graphic_eq</span>
+<span>Apple Music Sing • Hi-Res</span>
+</div>
+<button class="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/80 transition-colors" type="button">
+<span class="material-symbols-outlined text-lg">search</span>
+</button>
+<img alt="Profile" class="w-8 h-8 rounded-full ring-2 ring-white/10 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2mCN-kcfNph-wXtIDKy-or1wCNSM-jvyN1cfuH_2qLfG29Lf_kZLMPqxhUB4JWyb-MOeRlFhuXAIXMEXt8445-8w8UJG_CCtAXQzJT8UiHPiNRov4gEHZ0X1sba-5jNmFIcXhD1fQF26l2FK5jLcG_scbM2dVKkqr9kVL8JX1BwA_l9DvOuYaWHasqWxIzZUjiaim7o4drkpcEAqgv1_lxDF8PwkYMv0R6RezO4dyFLSq3PJZ06rJ"/>
+</div>
+</div>
+</header>
+<!-- Main View Container -->
+<main class="w-full max-w-7xl mx-auto pt-24 px-6 flex flex-col gap-6">
+<!-- 1. Compact & Ultra-Clean Artist Hero Header -->
+<section class="glass-panel rounded-3xl p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
+<!-- Glow ambient backdrop -->
+<div class="absolute -top-16 -left-16 w-80 h-80 bg-primary-container/20 rounded-full blur-[100px] pointer-events-none"></div>
+<div class="flex items-center gap-5 relative z-10 w-full md:w-auto">
+<div class="relative shrink-0">
+<img alt="Rosalía" class="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover shadow-xl ring-2 ring-white/15" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLwMNVzQ5oLQThNgthir4qmLObantHmeReGmwgRgPb7_Ibj21uW9yUxVkqWGvCcY7y42SB_xvgD3l0X2YpQCVdBBRfhEPMhHffrK-9obDmbGmVlDDDpa6g7oCRWeN6fydvPht3cBOVu2CkAaJe7RKk-BRhjJghL8BspaSYCOjqcsZg-8TzKNkjj2QYAElUa3CdhtB6icM4oeTloPwQ_Y4-hQdFFWD-cb0Uq1HS5rkhiEp0eqrt5Ly3"/>
+<span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary-container text-white flex items-center justify-center ring-2 ring-background text-xs">
+<span class="material-symbols-outlined text-[13px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</span>
+</div>
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Rosalía</h1>
+<span class="px-2 py-0.5 rounded-full bg-white/10 text-white/80 text-[11px] font-semibold border border-white/10">Genius Verified</span>
+</div>
+<div class="flex items-center gap-3 text-xs text-white/60">
+<span class="flex items-center gap-1 text-white/80 font-medium">
+<span class="material-symbols-outlined text-sm text-secondary">event</span>
+              Sábado 31 Mayo • 00:45h
+            </span>
+<span>•</span>
+<span>Primavera Sound Stage</span>
+</div>
+</div>
+</div>
+<!-- Compact Badges -->
+<div class="flex items-center gap-3 relative z-10 self-stretch md:self-auto justify-between md:justify-end">
+<div class="glass-card px-4 py-2.5 rounded-2xl flex items-center gap-3 text-left">
+<span class="material-symbols-outlined text-secondary text-2xl">favorite</span>
+<div class="flex flex-col">
+<span class="text-base font-bold text-white leading-none">99.4%</span>
+<span class="text-[11px] text-white/50 font-medium">Match</span>
+</div>
+</div>
+<div class="glass-card px-4 py-2.5 rounded-2xl flex items-center gap-3 text-left">
+<span class="material-symbols-outlined text-primary text-2xl">mic</span>
+<div class="flex flex-col">
+<span class="text-base font-bold text-white leading-none">Sing Ready</span>
+<span class="text-[11px] text-white/50 font-medium">Vocales activadas</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Grid: Apple Music Sing Live Lyrics (Left 7) + Apple Music SDK Player (Right 5) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+<!-- LEFT COLUMN: Apple Music Sing Live Karaoke Interface (7 cols) -->
+<section class="lg:col-span-7 flex flex-col gap-4">
+<!-- Sing Lyrics Module Screen -->
+<div class="glass-panel rounded-3xl p-6 md:p-8 flex flex-col gap-6 relative shadow-2xl overflow-hidden min-h-[460px]">
+<!-- Ambient backlight inside sing panel -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary-container/10 rounded-full blur-[120px] pointer-events-none"></div>
+<!-- Top Toolbar: Apple Style Segmented Pill Toggle -->
+<div class="relative z-10 flex items-center justify-between gap-3 border-b border-white/5 pb-4">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
+<span class="text-xs font-semibold tracking-wider text-white/70 uppercase">Apple Music Sing</span>
+</div>
+<!-- Toggle: [Modo Canta / Notas Genius] -->
+<div class="inline-flex bg-black/50 p-1 rounded-full border border-white/10" id="modeSwitchContainer">
+<button class="px-4 py-1.5 rounded-full bg-white text-black font-semibold text-xs transition-all shadow-md flex items-center gap-1.5" id="cantaModeBtn" type="button">
+<span class="material-symbols-outlined text-sm font-semibold">mic</span>
+<span>Modo Canta</span>
+</button>
+<button class="px-4 py-1.5 rounded-full text-white/60 hover:text-white font-medium text-xs transition-all flex items-center gap-1.5" id="geniusNotesBtn" type="button">
+<span class="material-symbols-outlined text-sm">psychology</span>
+<span>Notas Genius</span>
+</button>
+</div>
+</div>
+<!-- Apple Music Sing Live Lyrics Layout -->
+<div class="relative z-10 flex flex-col justify-center gap-6 py-4 flex-1">
+<!-- Inactive prior line -->
+<p class="text-xl md:text-2xl font-bold text-white/20 select-none cursor-pointer hover:text-white/40 transition-colors">
+              Hay un corillo saliendo del hotel...
+            </p>
+<!-- Active Singing Lyric Line (Enormous, Crisp, Focused) -->
+<div class="relative py-2 group">
+<h2 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white sing-glow tracking-tight leading-tight select-none">
+                "Baby, no me llames, que yo estoy ocupá olvidando tus males"
+              </h2>
+<div class="mt-2 text-base md:text-lg font-medium text-primary/80 select-none">
+                Ya decidí que esta noche se sale, con to’ mis motomamis...
+              </div>
+</div>
+<!-- Inactive upcoming line -->
+<p class="text-xl md:text-2xl font-bold text-white/30 select-none cursor-pointer hover:text-white/50 transition-colors">
+              Y ando despechá', oah, alocá'
+            </p>
+<!-- Inactive subsequent line -->
+<p class="text-lg md:text-xl font-bold text-white/15 select-none">
+              Bajé con un flow nuevo de paquete
+            </p>
+</div>
+<!-- Genius iOS Card/Popup (Clean & Minimalist) -->
+<div class="relative z-10 glass-card rounded-2xl p-4 border border-white/10 flex items-start gap-3.5 transition-all hover:bg-white/5 shadow-lg">
+<div class="w-9 h-9 rounded-xl bg-tertiary-container/30 flex items-center justify-center text-tertiary shrink-0">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+</div>
+<div class="flex flex-col gap-1 min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-bold text-tertiary uppercase tracking-wider">Nota Genius</span>
+<span class="text-[11px] text-white/40">Verificado</span>
+</div>
+<p class="text-xs md:text-sm font-medium text-white/90 leading-snug">
+                Inspiración en el mambo tradicional dominicano resignificado con vanguardia pop.
+              </p>
+</div>
+</div>
+</div>
+<!-- Quick Next Tracks Carousel Pill -->
+<div class="glass-card rounded-2xl p-3 px-4 flex items-center justify-between text-xs text-white/60">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-base">queue_music</span>
+<span class="text-white/80 font-medium">Siguiente:</span>
+<span>SAOKO • BIZCOCHITO • HENTAI</span>
+</div>
+<span class="font-semibold text-primary cursor-pointer hover:underline">Ver setlist completo</span>
+</div>
+</section>
+<!-- RIGHT COLUMN: Apple Music Player & Playlist Panel (5 cols) -->
+<section class="lg:col-span-5 flex flex-col gap-4">
+<!-- Apple Music SDK Glass Player -->
+<div class="glass-panel rounded-3xl p-6 flex flex-col gap-5 relative shadow-2xl">
+<!-- Album Art (High-Res Rounded Square) -->
+<div class="relative w-full aspect-square rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10 group">
+<img alt="DESPECHÁ Artwork" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWR151kVRM6bwi3z2R5QuaxmGpneoFTVV1IIMBAcLVj4M3A1KJk51F5rcQlQGQm4gj8SC4i8zUqhsUYcTuHPMpRVYfAH8_791LciLUyQUOnVn2etdfLiszI4Y4HhCk9S1a8xUqsfdNVILnd3WQx-qjI_QsNmViZKC9z88gpGS76NG3tn0DibZqLsWosA1IrLUWgpuFTY3LrAdDeTEapCMmviWWYP_M2bUOAzoT5PG8ukF-2nJTdQQ9"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+<div class="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-1.5 text-[11px] font-semibold text-white">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span>En vivo</span>
+</div>
+</div>
+<!-- Track Metadata -->
+<div class="flex items-center justify-between">
+<div class="flex flex-col min-w-0">
+<h3 class="text-lg font-bold text-white tracking-tight truncate">DESPECHÁ</h3>
+<p class="text-xs text-white/60 truncate font-medium">Rosalía • Primavera Sound 2025</p>
+</div>
+<button class="w-9 h-9 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/80 transition-colors" title="Favorito" type="button">
+<span class="material-symbols-outlined text-lg">star</span>
+</button>
+</div>
+<!-- Minimal Progress Bar -->
+<div class="flex flex-col gap-1.5">
+<div class="w-full h-1.5 bg-white/15 rounded-full overflow-hidden cursor-pointer relative group">
+<div class="h-full w-2/5 bg-white rounded-full relative">
+<span class="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"></span>
+</div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-medium text-white/40">
+<span>1:04</span>
+<span>-1:33</span>
+</div>
+</div>
+<!-- iOS Minimal Playback Controls -->
+<div class="flex items-center justify-center gap-6 py-1">
+<button class="text-white/60 hover:text-white transition-colors" title="Anterior" type="button">
+<span class="material-symbols-outlined text-2xl">fast_rewind</span>
+</button>
+<button class="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-xl shadow-white/20" title="Pausar" type="button">
+<span class="material-symbols-outlined text-2xl font-bold" style="font-variation-settings: 'FILL' 1;">pause</span>
+</button>
+<button class="text-white/60 hover:text-white transition-colors" title="Siguiente" type="button">
+<span class="material-symbols-outlined text-2xl">fast_forward</span>
+</button>
+</div>
+<!-- Festival Curated Tracklist (Clean & Exact Duration) -->
+<div class="flex flex-col gap-2 pt-2 border-t border-white/5">
+<div class="flex items-center justify-between text-[11px] font-semibold text-white/50 uppercase tracking-wider">
+<span>Festival Playlist</span>
+<span>4 temas</span>
+</div>
+<!-- List Item 1 (Active) -->
+<div class="p-2.5 rounded-xl bg-white/10 flex items-center justify-between gap-3 transition-colors cursor-pointer">
+<div class="flex items-center gap-3 min-w-0">
+<span class="material-symbols-outlined text-primary text-base shrink-0 animate-pulse">volume_up</span>
+<div class="flex flex-col min-w-0">
+<span class="text-xs font-bold text-white truncate">DESPECHÁ</span>
+<span class="text-[11px] text-white/60 truncate">Rosalía</span>
+</div>
+</div>
+<span class="text-[11px] font-medium text-white/50 shrink-0">2:37</span>
+</div>
+<!-- List Item 2 -->
+<div class="p-2.5 rounded-xl hover:bg-white/5 flex items-center justify-between gap-3 transition-colors cursor-pointer group">
+<div class="flex items-center gap-3 min-w-0">
+<span class="text-xs font-medium text-white/40 w-4 text-center shrink-0">2</span>
+<div class="flex flex-col min-w-0">
+<span class="text-xs font-semibold text-white/90 group-hover:text-white truncate">leavemealone</span>
+<span class="text-[11px] text-white/50 truncate">Fred again..</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[11px] font-medium text-white/40 group-hover:hidden">3:42</span>
+<span class="material-symbols-outlined text-base text-primary hidden group-hover:inline-block">play_arrow</span>
+</div>
+</div>
+<!-- List Item 3 -->
+<div class="p-2.5 rounded-xl hover:bg-white/5 flex items-center justify-between gap-3 transition-colors cursor-pointer group">
+<div class="flex items-center gap-3 min-w-0">
+<span class="text-xs font-medium text-white/40 w-4 text-center shrink-0">3</span>
+<div class="flex flex-col min-w-0">
+<span class="text-xs font-semibold text-white/90 group-hover:text-white truncate">Neverender</span>
+<span class="text-[11px] text-white/50 truncate">Justice • Tame Impala</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[11px] font-medium text-white/40 group-hover:hidden">4:42</span>
+<span class="material-symbols-outlined text-base text-primary hidden group-hover:inline-block">play_arrow</span>
+</div>
+</div>
+<!-- List Item 4 -->
+<div class="p-2.5 rounded-xl hover:bg-white/5 flex items-center justify-between gap-3 transition-colors cursor-pointer group">
+<div class="flex items-center gap-3 min-w-0">
+<span class="text-xs font-medium text-white/40 w-4 text-center shrink-0">4</span>
+<div class="flex flex-col min-w-0">
+<span class="text-xs font-semibold text-white/90 group-hover:text-white truncate">Judeline - ZAHARA</span>
+<span class="text-[11px] text-white/50 truncate">Descubrimiento</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[11px] font-medium text-white/40 group-hover:hidden">2:48</span>
+<span class="material-symbols-outlined text-base text-primary hidden group-hover:inline-block">play_arrow</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Apple Music Glass Floating Dock -->
+<aside class="fixed bottom-4 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[720px] z-50 glass-panel rounded-2xl px-4 py-2.5 shadow-[0_20px_40px_rgba(0,0,0,0.6)] border border-white/10 flex items-center justify-between gap-4">
+<!-- Current Playing Thumbnail & Name -->
+<div class="flex items-center gap-3 min-w-0">
+<img alt="Thumbnail" class="w-10 h-10 rounded-lg object-cover ring-1 ring-white/15 shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWR151kVRM6bwi3z2R5QuaxmGpneoFTVV1IIMBAcLVj4M3A1KJk51F5rcQlQGQm4gj8SC4i8zUqhsUYcTuHPMpRVYfAH8_791LciLUyQUOnVn2etdfLiszI4Y4HhCk9S1a8xUqsfdNVILnd3WQx-qjI_QsNmViZKC9z88gpGS76NG3tn0DibZqLsWosA1IrLUWgpuFTY3LrAdDeTEapCMmviWWYP_M2bUOAzoT5PG8ukF-2nJTdQQ9"/>
+<div class="flex flex-col min-w-0">
+<span class="text-xs font-bold text-white truncate">DESPECHÁ (Live Edit)</span>
+<span class="text-[11px] text-white/60 truncate">Rosalía • Apple Sing</span>
+</div>
+</div>
+<!-- Center Compact Controls -->
+<div class="flex items-center gap-4 shrink-0">
+<button class="text-white/60 hover:text-white transition-colors" type="button">
+<span class="material-symbols-outlined text-xl">fast_rewind</span>
+</button>
+<button class="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform" type="button">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">pause</span>
+</button>
+<button class="text-white/60 hover:text-white transition-colors" type="button">
+<span class="material-symbols-outlined text-xl">fast_forward</span>
+</button>
+</div>
+<!-- Right Volume / Mode -->
+<div class="flex items-center gap-3 shrink-0">
+<div class="hidden sm:flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-white/50">volume_up</span>
+<div class="w-16 h-1 bg-white/20 rounded-full overflow-hidden">
+<div class="w-3/4 h-full bg-white"></div>
+</div>
+</div>
+<button class="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors" title="Micrófono Sing" type="button">
+<span class="material-symbols-outlined text-base">mic</span>
+</button>
+</div>
+</aside>
+<script>
+    // Apple Style Segmented Toggle behavior
+    const cantaBtn = document.getElementById('cantaModeBtn');
+    const geniusBtn = document.getElementById('geniusNotesBtn');
+
+    if (cantaBtn && geniusBtn) {
+      cantaBtn.addEventListener('click', () => {
+        cantaBtn.className = 'px-4 py-1.5 rounded-full bg-white text-black font-semibold text-xs transition-all shadow-md flex items-center gap-1.5';
+        geniusBtn.className = 'px-4 py-1.5 rounded-full text-white/60 hover:text-white font-medium text-xs transition-all flex items-center gap-1.5';
+      });
+
+      geniusBtn.addEventListener('click', () => {
+        geniusBtn.className = 'px-4 py-1.5 rounded-full bg-white text-black font-semibold text-xs transition-all shadow-md flex items-center gap-1.5';
+        cantaBtn.className = 'px-4 py-1.5 rounded-full text-white/60 hover:text-white font-medium text-xs transition-all flex items-center gap-1.5';
+      });
+    }
+  </script>
+</body></html>
