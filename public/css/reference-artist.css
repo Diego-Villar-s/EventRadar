@@ -154,7 +154,7 @@
   height: 2rem;
   border-radius: 50%;
   object-fit: cover;
-  ring: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
 }
 
 .artist-main {
@@ -223,7 +223,7 @@
   border-radius: 1rem;
   object-fit: cover;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-  ring: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
 }
 
 @media (min-width: 768px) {
@@ -245,7 +245,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  ring: 2px solid #131315;
+  box-shadow: 0 0 0 2px #131315;
   font-size: 0.8125rem;
 }
 
@@ -705,7 +705,7 @@
   border-radius: 1rem;
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
-  ring: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .artist-player-artwork-img {
@@ -767,14 +767,14 @@
   font-weight: 700;
   color: white;
   letter-spacing: -0.025em;
-  truncate: true;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .artist-player-track-artist {
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
-  truncate: true;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .artist-player-fav {
@@ -967,7 +967,7 @@
   font-size: 0.75rem;
   font-weight: 700;
   color: white;
-  truncate: true;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .artist-playlist-item:not(.active) .artist-playlist-item-name {
@@ -978,7 +978,7 @@
 .artist-playlist-item-artist {
   font-size: 0.6875rem;
   color: rgba(255, 255, 255, 0.6);
-  truncate: true;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .artist-playlist-item-duration {
@@ -1042,7 +1042,7 @@
   border-radius: 0.5rem;
   object-fit: cover;
   flex-shrink: 0;
-  ring: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
 .artist-dock-info {
@@ -1056,13 +1056,13 @@
   font-size: 0.75rem;
   font-weight: 700;
   color: white;
-  truncate: true;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .artist-dock-artist {
   font-size: 0.6875rem;
   color: rgba(255, 255, 255, 0.6);
-  truncate: true;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .artist-dock-controls {

@@ -257,24 +257,24 @@ export class MatchView {
             <span class="event-card-ref-badge-left">${escapeHtml(formatEventDate(event))}${event.city ? ` · ${escapeHtml(event.city)}` : ''}</span>
             ${matchScore !== null ? `<span class="event-card-ref-badge-match"><span class="material-symbols-outlined">bolt</span>${matchScore}% Match</span>` : ''}
           </div>
-          <div class="event-card-ref-content">
-            <div class="event-card-ref-info">
-              <h3>${escapeHtml(event.name)}</h3>
-              <div class="event-card-ref-meta">
-                <span class="material-symbols-outlined">location_on</span>
-                <span>${escapeHtml(event.venue || 'Recinto por confirmar')}${event.city ? `, ${escapeHtml(event.city)}` : ''}</span>
-                ${formatEventTime(event) ? `<span>· ${escapeHtml(formatEventTime(event))}</span>` : ''}
-              </div>
-              ${event.artists?.length ? `<div class="event-card-ref-meta event-card-ref-artists"><span class="material-symbols-outlined">graphic_eq</span><span>${event.artists.slice(0, 3).map((artist) => escapeHtml(artist.name)).join(' · ')}</span></div>` : ''}
+        </div>
+        <div class="event-card-ref-content">
+          <div class="event-card-ref-info">
+            <h3>${escapeHtml(event.name)}</h3>
+            <div class="event-card-ref-meta">
+              <span class="material-symbols-outlined">location_on</span>
+              <span>${escapeHtml(event.venue || 'Recinto por confirmar')}${event.city ? `, ${escapeHtml(event.city)}` : ''}</span>
+              ${formatEventTime(event) ? `<span>· ${escapeHtml(formatEventTime(event))}</span>` : ''}
             </div>
-            <div class="event-card-ref-actions">
-              ${price ? `<div class="event-card-ref-price"><div class="event-card-ref-price-label">Desde</div><div class="event-card-ref-price-amount">${escapeHtml(price)}</div></div>` : ''}
-              <div class="event-card-ref-buttons">
-                ${hasCoords ? `<a class="event-card-ref-btn glass" href="#/ruta/${encodeURIComponent(event.id)}" aria-label="Ver ruta a ${escapeHtml(event.name)}">Ruta</a>` : ''}
-                ${hasCoords ? `<a class="event-card-ref-btn glass" href="#/clima/${encodeURIComponent(event.id)}" aria-label="Ver clima para ${escapeHtml(event.name)}">Clima</a>` : ''}
-                ${firstArtist ? `<a class="event-card-ref-btn glass" href="${artistHash(firstArtist)}" aria-label="Ver artista ${escapeHtml(firstArtist)}">Artista</a>` : ''}
-                ${ticketUrl ? `<a class="event-card-ref-btn white" href="${escapeHtml(ticketUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Comprar entradas para ${escapeHtml(event.name)}">Entradas</a>` : ''}
-              </div>
+            ${event.artists?.length ? `<div class="event-card-ref-meta event-card-ref-artists"><span class="material-symbols-outlined">graphic_eq</span><span>${event.artists.slice(0, 3).map((artist) => escapeHtml(artist.name)).join(' · ')}</span></div>` : ''}
+          </div>
+          <div class="event-card-ref-actions">
+            ${price ? `<div class="event-card-ref-price"><div class="event-card-ref-price-label">Desde</div><div class="event-card-ref-price-amount">${escapeHtml(price)}</div></div>` : ''}
+            <div class="event-card-ref-buttons">
+              ${hasCoords ? `<a class="event-card-ref-btn glass" href="#/ruta/${encodeURIComponent(event.id)}" aria-label="Ver ruta a ${escapeHtml(event.name)}">Ruta</a>` : ''}
+              ${hasCoords ? `<a class="event-card-ref-btn glass" href="#/clima/${encodeURIComponent(event.id)}" aria-label="Ver clima para ${escapeHtml(event.name)}">Clima</a>` : ''}
+              ${firstArtist ? `<a class="event-card-ref-btn glass" href="${artistHash(firstArtist)}" aria-label="Ver artista ${escapeHtml(firstArtist)}">Artista</a>` : ''}
+              ${ticketUrl ? `<a class="event-card-ref-btn white" href="${escapeHtml(ticketUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Comprar entradas para ${escapeHtml(event.name)}">Entradas</a>` : ''}
             </div>
           </div>
         </div>
