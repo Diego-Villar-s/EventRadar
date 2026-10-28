@@ -29,8 +29,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const hash = window.location.hash;
 
   if (hash.includes('callback=success')) {
+    const profileStatus = new URLSearchParams(hash.replace(/^#/, '')).get('profile');
     window.history.replaceState({}, document.title, `${window.location.pathname}#/inicio`);
-    notify('Sesión de Spotify conectada.');
+    if (profileStatus === 'forbidden') {
+      notify('Spotify conectó tu cuenta, pero bloqueó la lectura del perfil (403). Revisa Users and Access y la Web API en Spotify Dashboard.', 'error');
+    } else if (profileStatus === 'error') {
+      notify('Spotify conectó tu cuenta, pero no se pudo leer tu perfil. Puedes seguir explorando eventos.', 'error');
+    } else {
+      notify('Sesión de Spotify conectada.');
+    }
   } else if (hash.includes('callback=error')) {
     const reason = new URLSearchParams(hash.replace(/^#/, '')).get('reason');
     const messages = {

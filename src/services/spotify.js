@@ -5,13 +5,13 @@ const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
 const SPOTIFY_API_URL = 'https://api.spotify.com/v1';
 
+// El reproductor usa el iframe oficial de Spotify, así que no necesitamos
+// scopes de reproducción. Pedir menos permisos reduce los motivos por los que
+// Spotify puede rechazar la autorización o el acceso a la Web API.
 const SCOPES = [
   'user-read-private',
   'user-read-email',
-  'user-top-read',
-  'streaming',
-  'user-read-playback-state',
-  'user-modify-playback-state'
+  'user-top-read'
 ];
 
 let appToken = null;
@@ -112,7 +112,8 @@ export async function getTokens(code, codeVerifier) {
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
-    expiresIn: data.expires_in
+    expiresIn: data.expires_in,
+    scope: data.scope || null
   };
 }
 
@@ -381,13 +382,64 @@ export async function buildAffinityProfile(accessToken) {
   };
 }
 
+/**
+ * Extrae la información útil que devuelve Spotify en un error. Guardar solo el
+ * status (403) no permite distinguir entre una cuenta fuera de la allowlist,
+ * un fallo de permisos de la app o un problema temporal de Spotify.
+ */
+export function spotifyFailure(error) {
+  const response = error?.response;
+  const status = response?.status || null;
+  const data = response?.data;
+  const body = data && typeof data === 'object' ? data : null;
+  const errorBody = body?.error;
+  const spotifyError = typeof errorBody === 'string'
+    ? errorBody
+    : errorBody?.status || errorBody?.reason || null;
+  const textBody = typeof data === 'string'
+    ? data.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300) || null
+    : null;
+  const spotifyMessage = (typeof errorBody === 'object' && errorBody
+    ? errorBody.message || null
+    : body?.error_description || body?.message || null) || textBody;
+
+  return {
+    status,
+    spotifyError,
+    spotifyMessage,
+    wwwAuthenticate: response?.headers?.['www-authenticate'] || null
+  };
+}
+
 export function spotifyErrorPayload(error, fallback = 'No se pudo completar la solicitud a Spotify.') {
-  const status = error?.response?.status || null;
-  if (status === 401 || status === 403) {
+  const { status, spotifyMessage } = spotifyFailure(error);
+
+  if (!isSpotifyConfigured()) {
     return {
-      code: 'SPOTIFY_AUTH_ERROR',
+      code: 'SPOTIFY_NOT_CONFIGURED',
+      status: null,
+      message: 'Spotify no está configurado. Añade SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET.'
+    };
+  }
+  if (status === 403) {
+    if (/premium/i.test(spotifyMessage || '')) {
+      return {
+        code: 'SPOTIFY_PREMIUM_REQUIRED',
+        status,
+        message: 'Spotify exige una suscripción Premium activa para el dueño de la app (Development Mode). La cuenta puede iniciar sesión, pero la Web API está bloqueada. Activa Premium en la cuenta dueña y espera unas horas.'
+      };
+    }
+    return {
+      code: 'SPOTIFY_FORBIDDEN',
       status,
-      message: 'Spotify rechazó las credenciales o la sesión ha caducado.'
+      message: 'Spotify rechazó el acceso (403). La cuenta puede estar fuera de la lista de usuarios permitidos de la app, la app puede no tener la Web API habilitada o el dueño de la app no tiene Premium.'
+    };
+  }
+  if (status === 401) {
+    return {
+      code: 'SPOTIFY_UNAUTHORIZED',
+      status,
+      message: 'La sesión de Spotify caducó o fue revocada. Vuelve a iniciar sesión.'
     };
   }
   if (status === 429) {
@@ -395,13 +447,6 @@ export function spotifyErrorPayload(error, fallback = 'No se pudo completar la s
       code: 'SPOTIFY_RATE_LIMIT',
       status,
       message: 'Spotify limitó temporalmente las solicitudes. Inténtalo de nuevo en unos minutos.'
-    };
-  }
-  if (!isSpotifyConfigured()) {
-    return {
-      code: 'SPOTIFY_NOT_CONFIGURED',
-      status: null,
-      message: 'Spotify no está configurado. Añade SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET.'
     };
   }
   return { code: 'SPOTIFY_ERROR', status, message: fallback };

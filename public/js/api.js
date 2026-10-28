@@ -170,10 +170,17 @@ function showProfile(user) {
   const profileImg = document.getElementById('navProfileImg');
   const profileName = document.getElementById('navProfileName');
 
+  const name = user.display_name || user.id || 'Cuenta de Spotify';
   if (loginBtn) loginBtn.style.display = 'none';
   if (profileDiv) profileDiv.style.display = 'flex';
-  if (profileImg) profileImg.src = avatarUrl(user.images, user.display_name || user.id);
-  if (profileName) profileName.textContent = user.display_name || user.id || 'Usuario';
+  if (profileImg) profileImg.src = avatarUrl(user.images, name);
+  if (profileName) profileName.textContent = name;
+
+  if (profileName) {
+    profileName.title = user.profileUnavailable
+      ? 'Spotify conectado, pero rechazó la lectura del perfil (403). Revisa Users and Access en Spotify Dashboard.'
+      : name;
+  }
 }
 
 export function initAuth() {
@@ -202,6 +209,15 @@ export function initAuth() {
           id: session.user.id,
           display_name: session.user.displayName,
           images: session.user.image ? [{ url: session.user.image }] : []
+        });
+      } else {
+        // /me devolvió 403: la cuenta está conectada, pero Spotify no permite
+        // leer el nombre. Mostramos igualmente el perfil para no confundir al
+        // usuario con un "sin conectar".
+        showProfile({
+          display_name: 'Cuenta de Spotify',
+          images: [],
+          profileUnavailable: true
         });
       }
       getCurrentUser(true).then((user) => {

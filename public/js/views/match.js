@@ -197,6 +197,11 @@ export class MatchView {
     const artists = this.affinity?.topArtists || [];
     const genres = this.affinity?.topGenres || [];
     const name = this.user.display_name || this.user.id || 'Tu perfil';
+    const profileBlocked = Boolean(this.user.profileUnavailable);
+    const premiumBlocked = /premium/i.test(this.user.profileError?.spotifyMessage || '');
+    const blockedMessage = premiumBlocked
+      ? 'Spotify exige una suscripción <strong>Premium</strong> en la cuenta dueña de la app (Development Mode). Tu cuenta está conectada, pero Spotify bloquea la lectura de tus artistas. Activa Premium en esa cuenta y espera unas horas; después vuelve a iniciar sesión.'
+      : 'Spotify conectó tu cuenta, pero rechazó la lectura del perfil y de tus artistas (403). Revisa en Spotify Dashboard que tu cuenta esté en <strong>Users and Access</strong>, que la Web API esté habilitada y que el dueño de la app tenga Premium. Después cierra sesión y vuelve a entrar.';
     const matchValue = this.averageMatch === null ? '—' : `${this.averageMatch}%`;
     const dash = this.averageMatch === null ? 0 : this.averageMatch;
     const circumference = 2 * Math.PI * 15.9155;
@@ -213,7 +218,9 @@ export class MatchView {
               <h1>${escapeHtml(name)} <span class="affinity-spotify-badge"><span class="affinity-spotify-dot"></span>Spotify conectado</span></h1>
               ${this.affinity
                 ? `<div class="affinity-artists"><span class="affinity-artists-label">Tus artistas:</span>${artists.slice(0, 4).map((artist) => `<span class="affinity-artist-chip">${escapeHtml(artist.name)}</span>`).join('') || '<span class="affinity-artists-label">Spotify no devolvió artistas.</span>'}</div>`
-                : '<p class="affinity-empty-text">No se pudo cargar tu afinidad musical. Puedes reintentar sin perder la sesión.</p>'}
+                : `<p class="affinity-empty-text">${profileBlocked
+                  ? blockedMessage
+                  : 'No se pudo cargar tu afinidad musical. Puedes reintentar sin perder la sesión.'}</p>`}
             </div>
           </div>
           <div class="affinity-metrics">

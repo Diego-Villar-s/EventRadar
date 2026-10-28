@@ -92,7 +92,21 @@ Si `SPOTIFY_REDIRECT_URI` no está definido, el servidor lo deriva automáticame
 4. Si la app de Spotify está en **Development mode**, solo pueden entrar las cuentas
    agregadas en **Users and Access**. Para cualquier otra cuenta Spotify devuelve
    `access_denied` y la app muestra el motivo.
-5. Revisa `GET /api/health`: `integrations.spotify` debe ser `true`.
+5. Si el login termina bien pero la app no muestra tu cuenta y en los logs aparece
+   `Spotify profile lookup failed after login: {"status":403,...}`, Spotify autorizó
+   el login pero está bloqueando la Web API. El mensaje exacto de Spotify suele ser
+   `Active premium subscription required for the owner of the app`. Revisa en este orden:
+   - **Premium del dueño**: la cuenta owner de la app debe tener Spotify Premium
+     activo. Es un requisito de Development Mode desde 2026. Tras activarlo, Spotify
+     puede tardar unas horas en desbloquear las peticiones.
+   - **Settings → Web API**: la app debe tener la Web API habilitada.
+   - **Users and Access**: agrega el email exacto de tu cuenta. En Development Mode
+     solo pueden usar la app las cuentas listadas.
+   - Si ya estaba todo bien, puede ser un fallo temporal de Spotify: reintenta más tarde.
+   Después de cambiar algo, cierra sesión y vuelve a entrar para obtener un token nuevo.
+6. Abre `GET /api/spotify/diagnostics` con la sesión iniciada para ver el estado
+   exacto que devuelve Spotify y las pistas de configuración.
+7. Revisa `GET /api/health`: `integrations.spotify` debe ser `true`.
 
 El callback guarda una instantánea mínima del perfil en la sesión firmada, así que la
 navbar muestra tu cuenta aunque Spotify tarde o falle al responder `/api/me`.
@@ -134,7 +148,10 @@ La ruta desconocida vuelve a `#/inicio`.
 ## API del backend
 
 - `GET /api/health`: estado del proceso y claves configuradas (sin llamadas externas).
-- `GET /api/session`: si hay sesión de Spotify y la instantánea del perfil (sin llamar a Spotify).
+- `GET /api/session`: si hay sesión de Spotify, la instantánea del perfil y el último
+  error de Spotify (`profileError`), sin llamar a Spotify.
+- `GET /api/spotify/diagnostics`: con sesión iniciada, consulta `/me` en vivo y
+  devuelve el status real de Spotify más pistas de configuración. No expone tokens.
 - `GET /api/events`: listado de Ticketmaster. Acepta `lat`, `lng`, `radius` (1–500),
   `unit`, `countryCode`, `city`, `keyword`, `size` y `page`. La respuesta incluye
   `meta.scope` (`nearby`, `country`, `city` o `global`) y `distanceKm` por evento.
