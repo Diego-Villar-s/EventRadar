@@ -17,6 +17,20 @@ export function safeHttpUrl(value) {
   }
 }
 
+export function hasValidCoordinates(lat, lng) {
+  if (lat === null || lat === undefined || lat === '' || lng === null || lng === undefined || lng === '') {
+    return false;
+  }
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  return Number.isFinite(latitude)
+    && Number.isFinite(longitude)
+    && latitude >= -90
+    && latitude <= 90
+    && longitude >= -180
+    && longitude <= 180;
+}
+
 export function initials(name = '') {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() || '?';
 }
@@ -27,7 +41,8 @@ export function avatarUrl(images, name = 'Usuario') {
     const safe = safeHttpUrl(image.url);
     if (safe) return safe;
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" rx="48" fill="#2c2c2e"/><text x="48" y="57" text-anchor="middle" font-family="Arial,sans-serif" font-size="30" font-weight="700" fill="#ffffff">${initials(name)}</text></svg>`;
+  const safeInitials = escapeHtml(initials(name));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" rx="48" fill="#2c2c2e"/><text x="48" y="57" text-anchor="middle" font-family="Arial,sans-serif" font-size="30" font-weight="700" fill="#ffffff">${safeInitials}</text></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 

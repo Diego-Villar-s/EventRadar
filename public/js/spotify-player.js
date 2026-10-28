@@ -18,8 +18,12 @@ class SpotifyPlayer {
   init() {
     this.updateControls();
 
-    window.onSpotifyIframeApiReady = (IFrameAPI) => this.onApiReady(IFrameAPI);
-    if (window.SpotifyIframeApi) this.onApiReady(window.SpotifyIframeApi);
+    if (window.__eventRadarSpotifyApi) this.onApiReady(window.__eventRadarSpotifyApi);
+    window.addEventListener(
+      'eventradar:spotify-ready',
+      (event) => this.onApiReady(event.detail),
+      { once: true }
+    );
 
     this.playBtn?.addEventListener('click', () => {
       if (!this.controller) return;

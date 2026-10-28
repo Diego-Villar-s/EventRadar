@@ -1,6 +1,6 @@
 import { getEvent, getEvents, getRoute, geocodeAddress, reverseGeocode } from '../api.js';
 import { DARK_MAP_FILTER, MAP_ATTRIBUTION, MAP_TILE_SUBDOMAINS, MAP_TILE_URL } from '../config.js';
-import { emptyState, escapeHtml, formatEventDate, formatEventTime } from '../utils.js';
+import { emptyState, escapeHtml, formatEventDate, formatEventTime, hasValidCoordinates } from '../utils.js';
 
 function formatDistance(km) {
   if (!Number.isFinite(Number(km))) return '—';
@@ -158,7 +158,7 @@ export class RouteDetailView {
   }
 
   hasCoordinates() {
-    return Number.isFinite(Number(this.event?.lat)) && Number.isFinite(Number(this.event?.lng));
+    return hasValidCoordinates(this.event?.lat, this.event?.lng);
   }
 
   renderEvent() {
@@ -325,6 +325,8 @@ export class RouteDetailView {
     this.routeError = result.error;
 
     if (!this.route) {
+      const title = this.container.querySelector('#routeSummaryTitle');
+      if (title) title.textContent = 'Ruta no disponible';
       this.setRouteStatus(this.routeError?.message || 'No se pudo calcular la ruta.', true);
       return;
     }

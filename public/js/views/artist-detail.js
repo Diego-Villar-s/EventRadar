@@ -99,6 +99,7 @@ export class ArtistDetailView {
     const spotifyUrl = safeHttpUrl(artist.externalUrl);
     const genres = (artist.genres || []).slice(0, 4);
     const followers = formatFollowers(artist.followers);
+    const hasPopularity = Number.isFinite(Number(artist.popularity));
 
     content.innerHTML = `
       <section class="artist-hero">
@@ -111,7 +112,7 @@ export class ArtistDetailView {
           <div class="artist-hero-info">
             <div class="artist-hero-name-row">
               <h1 class="artist-hero-name">${escapeHtml(artist.name)}</h1>
-              ${artist.popularity !== null ? `<span class="artist-hero-badge">Popularidad ${escapeHtml(String(artist.popularity))}/100</span>` : ''}
+              ${hasPopularity ? `<span class="artist-hero-badge">Popularidad ${escapeHtml(String(artist.popularity))}/100</span>` : ''}
             </div>
             <div class="artist-hero-meta">
               ${genres.length ? genres.map((genre) => `<span class="affinity-artist-chip">${escapeHtml(genre)}</span>`).join('') : '<span class="artist-hero-meta-item">Spotify no devolvió géneros.</span>'}

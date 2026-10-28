@@ -477,18 +477,6 @@
   }
 }
 
-.route-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-@media (min-width: 1024px) {
-  .route-sidebar {
-    grid-column: span 4;
-  }
-}
-
 .route-card {
   background: rgba(28, 28, 30, 0.8);
   backdrop-filter: blur(30px);

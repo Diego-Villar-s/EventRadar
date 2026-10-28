@@ -17,7 +17,7 @@
   /* Text */
   --text-primary: #FFFFFF;
   --text-secondary: rgba(235, 235, 245, 0.60);
-  --text-tertiary: rgba(235, 235, 245, 0.30);
+  --text-tertiary: rgba(235, 235, 245, 0.46);
   
   /* Borders & Effects */
   --border: 1px solid rgba(255, 255, 255, 0.08);
@@ -75,7 +75,18 @@ body {
 }
 
 ::-webkit-scrollbar {
-  display: none;
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #08090c;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px solid #08090c;
+  border-radius: 9999px;
 }
 
 /* Glassmorphism utilities */

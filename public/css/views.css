@@ -1,4 +1,16 @@
 /* Layout overrides that must load after the reference styles. */
+/* La API iFrame de Spotify inserta el reproductor en un contenedor propio.
+   Lo mantenemos fuera de pantalla; los controles del mini player siguen funcionando. */
+iframe[src*="open.spotify.com/embed/"] {
+  position: fixed !important;
+  left: -10000px !important;
+  top: 0 !important;
+  width: 320px !important;
+  height: 80px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  border: 0 !important;
+}
 .match-main,
 .route-main,
 .weather-main,
@@ -23,9 +35,46 @@
     linear-gradient(140deg, #15171c, #0b0c10);
 }
 
+.event-card-ref-info {
+  min-width: 0;
+}
+
+.events-header {
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+}
+
+.events-sort {
+  margin-left: auto;
+}
+
+@media (max-width: 900px) {
+  .events-sort {
+    flex-basis: 100%;
+    margin-left: 0;
+    text-align: left;
+  }
+}
+
+@media (min-width: 1025px) {
+  .route-card {
+    grid-column: span 4;
+  }
+}
+
 @media (max-width: 1024px) {
   .nav-location {
     display: none;
+  }
+
+  .route-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .route-map-section {
+    order: -1;
+    width: 100%;
   }
 }
 
@@ -87,6 +136,23 @@
     bottom: 0.75rem;
     left: 0.75rem;
     right: 0.75rem;
+  }
+
+  .event-card-ref-info > .event-card-ref-meta {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .event-card-ref-info > .event-card-ref-meta > span:nth-child(2) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .event-card-ref-info > .event-card-ref-meta > span:nth-child(3) {
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .event-card-ref-actions {

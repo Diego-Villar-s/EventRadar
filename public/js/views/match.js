@@ -8,6 +8,7 @@ import {
   formatEventDate,
   formatEventTime,
   formatPrice,
+  hasValidCoordinates,
   safeHttpUrl
 } from '../utils.js';
 
@@ -52,7 +53,7 @@ export class MatchView {
             <div class="filters-selectors">
               <label class="filter-search">
                 <span class="material-symbols-outlined">search</span>
-                <input id="eventSearch" type="search" placeholder="Buscar evento, recinto o artista" autocomplete="off">
+                <input id="eventSearch" type="search" aria-label="Buscar evento, recinto o artista" placeholder="Buscar evento, recinto o artista" autocomplete="off">
               </label>
               <label class="filters-pill">
                 <span class="material-symbols-outlined">sort</span>
@@ -193,8 +194,8 @@ export class MatchView {
       chips.innerHTML = '<span class="filters-pill">Sin géneros disponibles</span>';
     } else {
       chips.innerHTML = `
-        <button class="filter-chip ${this.genre === 'all' ? 'active' : ''}" type="button" data-genre="all">Todos</button>
-        ${genres.map((genre) => `<button class="filter-chip ${this.genre.toLowerCase() === genre.toLowerCase() ? 'active' : ''}" type="button" data-genre="${escapeHtml(genre)}">${escapeHtml(genre)}</button>`).join('')}
+        <button class="filter-chip ${this.genre === 'all' ? 'active' : ''}" type="button" data-genre="all" aria-pressed="${this.genre === 'all'}">Todos</button>
+        ${genres.map((genre) => `<button class="filter-chip ${this.genre.toLowerCase() === genre.toLowerCase() ? 'active' : ''}" type="button" data-genre="${escapeHtml(genre)}" aria-pressed="${this.genre.toLowerCase() === genre.toLowerCase()}">${escapeHtml(genre)}</button>`).join('')}
       `;
     }
 
@@ -242,11 +243,11 @@ export class MatchView {
     const price = formatPrice(event);
     const ticketUrl = safeHttpUrl(event.url);
     const firstArtist = event.artists?.[0]?.name;
-    const hasCoords = Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng));
+    const hasCoords = hasValidCoordinates(event.lat, event.lng);
     const matchScore = typeof event.matchScore === 'number' ? event.matchScore : null;
 
     return `
-      <article class="event-card-ref">
+      <article class="event-card-ref" aria-label="${escapeHtml(event.name)}">
         <div class="event-card-ref-image">
           ${image
             ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(event.name)}" loading="lazy">`
@@ -269,10 +270,10 @@ export class MatchView {
             <div class="event-card-ref-actions">
               ${price ? `<div class="event-card-ref-price"><div class="event-card-ref-price-label">Desde</div><div class="event-card-ref-price-amount">${escapeHtml(price)}</div></div>` : ''}
               <div class="event-card-ref-buttons">
-                ${hasCoords ? `<a class="event-card-ref-btn glass" href="#/ruta/${encodeURIComponent(event.id)}">Ruta</a>` : ''}
-                ${hasCoords ? `<a class="event-card-ref-btn glass" href="#/clima/${encodeURIComponent(event.id)}">Clima</a>` : ''}
-                ${firstArtist ? `<a class="event-card-ref-btn glass" href="${artistHash(firstArtist)}">Artista</a>` : ''}
-                ${ticketUrl ? `<a class="event-card-ref-btn white" href="${escapeHtml(ticketUrl)}" target="_blank" rel="noopener noreferrer">Entradas</a>` : ''}
+                ${hasCoords ? `<a class="event-card-ref-btn glass" href="#/ruta/${encodeURIComponent(event.id)}" aria-label="Ver ruta a ${escapeHtml(event.name)}">Ruta</a>` : ''}
+                ${hasCoords ? `<a class="event-card-ref-btn glass" href="#/clima/${encodeURIComponent(event.id)}" aria-label="Ver clima para ${escapeHtml(event.name)}">Clima</a>` : ''}
+                ${firstArtist ? `<a class="event-card-ref-btn glass" href="${artistHash(firstArtist)}" aria-label="Ver artista ${escapeHtml(firstArtist)}">Artista</a>` : ''}
+                ${ticketUrl ? `<a class="event-card-ref-btn white" href="${escapeHtml(ticketUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Comprar entradas para ${escapeHtml(event.name)}">Entradas</a>` : ''}
               </div>
             </div>
           </div>

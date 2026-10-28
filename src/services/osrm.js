@@ -11,6 +11,27 @@ function validCoordinate(value) {
   return Number.isFinite(Number(value));
 }
 
+function haversineKm(a, b) {
+  const toRad = (value) => (Number(value) * Math.PI) / 180;
+  const lat1 = toRad(a[1]);
+  const lat2 = toRad(b[1]);
+  const deltaLat = lat2 - lat1;
+  const deltaLng = toRad(b[0] - a[0]);
+  const h = Math.sin(deltaLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function routeTouchesRequestedPoints(route, fromLng, fromLat, toLng, toLat) {
+  const coordinates = route?.geometry?.coordinates;
+  if (!Array.isArray(coordinates) || coordinates.length < 2) return false;
+  const first = coordinates[0];
+  const last = coordinates[coordinates.length - 1];
+  const toleranceKm = 25;
+  return haversineKm(first, [Number(fromLng), Number(fromLat)]) <= toleranceKm
+    && haversineKm(last, [Number(toLng), Number(toLat)]) <= toleranceKm;
+}
+
 function photonDisplayName(properties = {}) {
   return [
     properties.name,
@@ -47,6 +68,15 @@ export async function getRoute(fromLng, fromLat, toLng, toLat, profile = 'drivin
     }
 
     const route = response.data.routes[0];
+    if (!routeTouchesRequestedPoints(route, fromLng, fromLat, toLng, toLat)) {
+      return {
+        route: null,
+        error: {
+          code: 'OUT_OF_COVERAGE',
+          message: 'El servidor OSRM público no cubre esta ruta y no devolvió un trayecto válido hasta el destino. Prueba con un origen más cercano al recinto.'
+        }
+      };
+    }
     const result = {
       route: {
         distance: route.distance / 1000,

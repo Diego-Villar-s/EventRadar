@@ -1,5 +1,5 @@
 import { getEvent, getEvents, getWeather } from '../api.js';
-import { emptyState, escapeHtml, formatEventDate, formatEventTime, safeHttpUrl } from '../utils.js';
+import { emptyState, escapeHtml, formatEventDate, formatEventTime, hasValidCoordinates, safeHttpUrl } from '../utils.js';
 
 function weatherIcon(item) {
   const code = item?.weather?.[0]?.icon || '';
@@ -190,9 +190,7 @@ export class WeatherDetailView {
       return;
     }
 
-    const lat = Number(this.event.lat);
-    const lng = Number(this.event.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    if (!hasValidCoordinates(this.event.lat, this.event.lng)) {
       this.renderEventShell(emptyState({
         icon: 'wrong_location',
         title: 'El recinto no tiene coordenadas',
@@ -201,7 +199,7 @@ export class WeatherDetailView {
       return;
     }
 
-    this.weather = await getWeather(lat, lng);
+    this.weather = await getWeather(Number(this.event.lat), Number(this.event.lng));
     this.checked = this.loadChecklist();
     this.renderWeather();
   }
@@ -270,6 +268,11 @@ export class WeatherDetailView {
     const max = Math.max(...nextDay.map((item) => Number(item.main?.temp_max)).filter(Number.isFinite));
     const advice = this.weather.advice;
     const checklist = advice?.checklist || [];
+    const validChecked = new Set([...this.checked].filter((item) => checklist.includes(item)));
+    if (validChecked.size !== this.checked.size) {
+      this.checked = validChecked;
+      this.saveChecklist();
+    }
     const eventTime = this.event.datetime ? new Date(this.event.datetime) : null;
     const lastForecast = list[list.length - 1]?.dt ? new Date(list[list.length - 1].dt * 1000) : null;
     const outsideForecast = eventTime && lastForecast && eventTime > lastForecast;
