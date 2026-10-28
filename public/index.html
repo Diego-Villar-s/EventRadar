@@ -48,9 +48,9 @@
             </nav>
             
             <div class="nav-right">
-                <button class="btn-spotify" id="spotifyLoginBtn" type="button" aria-label="Iniciar sesión con Spotify">
+                <button class="btn-lastfm" id="lastfmLoginBtn" type="button" aria-label="Conectar Last.fm">
                     <span class="material-symbols-outlined">login</span>
-                    <span>Iniciar sesión con Spotify</span>
+                    <span>Conectar Last.fm</span>
                 </button>
                 <div class="nav-profile" id="navProfile" style="display: none;">
                     <img id="navProfileImg" alt="Perfil" class="nav-profile-img">
@@ -71,7 +71,7 @@
     </main>
     
     <!-- Mini Player -->
-    <aside class="mini-player" id="miniPlayer" aria-label="Reproductor de Spotify" style="display: none;">
+    <aside class="mini-player" id="miniPlayer" aria-label="Reproductor de vistas previas" style="display: none;">
         <div class="mini-player-container">
             <div class="mini-player-info">
                 <div class="mini-player-icon">
@@ -87,13 +87,12 @@
                     <span class="material-symbols-outlined">play_arrow</span>
                 </button>
                 <div class="mini-player-divider"></div>
-                <button class="mini-player-spotify" id="miniPlayerSpotify" type="button" title="Abrir en Spotify" aria-label="Abrir en Spotify">
+                <button class="mini-player-open" id="miniPlayerOpen" type="button" title="Abrir en Deezer" aria-label="Abrir en Deezer">
                     <span class="material-symbols-outlined">open_in_new</span>
-                    <span>Spotify</span>
+                    <span>Deezer</span>
                 </button>
             </div>
         </div>
-        <div id="spotifyEmbedContainer" aria-hidden="true" style="position: fixed; left: -10000px; top: 0; width: 320px; height: 80px; opacity: 0; pointer-events: none;"></div>
     </aside>
     
     <!-- Mobile Bottom Nav -->
@@ -118,8 +117,6 @@
     
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="/js/spotify-bootstrap.js"></script>
-    <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
     <script type="module" src="/js/app.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 import express from 'express';
 import { searchEvents, getEventById } from '../services/ticketmaster.js';
-import { buildAffinityProfile, getValidUserAccessToken } from '../services/spotify.js';
+import { buildAffinityProfile, isLastfmConfigured } from '../services/lastfm.js';
 import { calculateMatchScore, sortEventsByMatch } from '../utils/matchScore.js';
 
 const router = express.Router();
@@ -11,10 +11,14 @@ const DEFAULT_RADIUS_KM = 150;
 const MAX_RADIUS_KM = 500;
 
 async function getAffinity(req) {
-  const accessToken = await getValidUserAccessToken(req.session);
-  if (!accessToken) return null;
+  const username = req.session?.lastfm?.username;
+  if (!username || !isLastfmConfigured()) return null;
   try {
-    return await buildAffinityProfile(accessToken);
+    const affinity = await buildAffinityProfile(username);
+    if (!affinity) return null;
+    const hasArtists = Array.isArray(affinity.topArtists) && affinity.topArtists.length > 0;
+    const hasGenres = Array.isArray(affinity.topGenres) && affinity.topGenres.length > 0;
+    return hasArtists || hasGenres ? affinity : null;
   } catch {
     return null;
   }

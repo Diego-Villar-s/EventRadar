@@ -19,6 +19,10 @@ services:
         value: "true"
       - key: SESSION_SECRET
         generateValue: true
+      # Last.fm: afinidad musical gratuita (usuario público, sin OAuth).
+      - key: LASTFM_API_KEY
+        sync: false
+      # Spotify queda en pausa temporal; se conserva para reactivarlo.
       - key: SPOTIFY_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_SECRET

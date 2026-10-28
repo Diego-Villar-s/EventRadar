@@ -161,7 +161,7 @@
   gap: var(--space-2);
 }
 
-.btn-spotify {
+.btn-lastfm {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -181,17 +181,17 @@
   transition: filter var(--motion-fast) var(--ease-standard);
 }
 
-.btn-spotify:hover {
+.btn-lastfm:hover {
   filter: brightness(1.08);
 }
 
-.btn-spotify:disabled {
+.btn-lastfm:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;
 }
 
-.btn-spotify .material-symbols-outlined {
+.btn-lastfm .material-symbols-outlined {
   font-size: var(--type-body-md);
 }
 
@@ -420,7 +420,7 @@
   background: var(--border-color);
 }
 
-.mini-player-spotify {
+.mini-player-open {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -437,17 +437,17 @@
     color var(--motion-fast) var(--ease-standard);
 }
 
-.mini-player-spotify:hover {
+.mini-player-open:hover {
   background: var(--accent-green);
   color: var(--text-on-success);
 }
 
-.mini-player-spotify .material-symbols-outlined {
+.mini-player-open .material-symbols-outlined {
   font-size: var(--type-body-sm);
 }
 
 .mini-player-play:disabled,
-.mini-player-spotify:disabled {
+.mini-player-open:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;
@@ -1198,7 +1198,7 @@ textarea:focus-visible {
   font-weight: var(--weight-semibold);
 }
 
-.affinity-spotify-badge {
+.affinity-provider-badge {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -1208,7 +1208,7 @@ textarea:focus-visible {
   font-weight: var(--weight-semibold);
 }
 
-.affinity-spotify-dot {
+.affinity-provider-dot {
   width: var(--size-dot-sm);
   height: var(--size-dot-sm);
   border-radius: 50%;
@@ -2887,14 +2887,14 @@ textarea:focus-visible {
     display: none;
   }
 
-  .btn-spotify {
+  .btn-lastfm {
     width: var(--size-control-xs);
     height: var(--size-control-xs);
     min-height: var(--size-control-xs);
     padding: 0;
   }
 
-  .btn-spotify span:last-child,
+  .btn-lastfm span:last-child,
   .nav-profile-name {
     display: none;
   }
@@ -2905,14 +2905,14 @@ textarea:focus-visible {
     display: none;
   }
 
-  .btn-spotify {
+  .btn-lastfm {
     width: var(--size-control-xs);
     height: var(--size-control-xs);
     min-height: var(--size-control-xs);
     padding: 0;
   }
 
-  .btn-spotify span:last-child {
+  .btn-lastfm span:last-child {
     display: none;
   }
 

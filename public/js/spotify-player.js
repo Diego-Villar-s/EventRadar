@@ -1,3 +1,4 @@
+// ARCHIVADO: el reproductor activo es preview-player.js (previews de Deezer).
 class SpotifyPlayer {
   constructor() {
     this.element = document.getElementById('miniPlayer');

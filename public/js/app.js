@@ -1,6 +1,6 @@
 import { router } from './router.js';
 import { initAuth, initNavLocation } from './api.js';
-import './spotify-player.js';
+import './preview-player.js';
 
 function notify(message, type = 'info') {
   const toast = document.createElement('div');
@@ -28,6 +28,8 @@ function notify(message, type = 'info') {
 document.addEventListener('DOMContentLoaded', async () => {
   const hash = window.location.hash;
 
+  // Compatibilidad con el callback de Spotify (flujo en pausa). Se conserva
+  // para reactivarlo; el login activo es Last.fm y redirige a /#/match.
   if (hash.includes('callback=success')) {
     const profileStatus = new URLSearchParams(hash.replace(/^#/, '')).get('profile');
     window.history.replaceState({}, document.title, `${window.location.pathname}#/inicio`);

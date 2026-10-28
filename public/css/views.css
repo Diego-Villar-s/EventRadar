@@ -1,13 +1,2 @@
-/* Platform exception: the Spotify iFrame API injects its player into
-   #miniPlayer. Keep it off-screen while the global mini player controls it.
-   This is the only !important block intentionally kept. */
-iframe[src*="open.spotify.com/embed/"] {
-  position: fixed !important;
-  left: -10000px !important;
-  top: 0 !important;
-  width: 320px !important;
-  height: 80px !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  border: 0 !important;
-}
+/* El reproductor global usa <audio> con previews de Deezer; no se inyectan
+   iframes de terceros en el DOM. */

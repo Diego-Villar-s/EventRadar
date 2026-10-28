@@ -13,11 +13,11 @@ export class WelcomeView {
       <section class="welcome-hero">
         <span class="welcome-kicker"><span class="material-symbols-outlined">radar</span> EventRadar &amp; Festival Match</span>
         <h1>Descubre los conciertos que encajan con tu música</h1>
-        <p>Conecta tu cuenta de Spotify para calcular la afinidad real con cada evento, planificar tu ruta y revisar el pronóstico del recinto.</p>
+        <p>Conecta tu cuenta de Last.fm para calcular la afinidad real con cada evento, planificar tu ruta y revisar el pronóstico del recinto.</p>
         <div class="welcome-actions">
-          <button class="welcome-login" id="welcomeSpotifyBtn" type="button">
+          <button class="welcome-login" id="welcomeLastfmBtn" type="button">
             <span class="material-symbols-outlined">login</span>
-            Iniciar sesión con Spotify
+            Conectar Last.fm
           </button>
           <a class="welcome-secondary" href="#/match">Explorar eventos sin conectar</a>
         </div>
@@ -35,7 +35,7 @@ export class WelcomeView {
     `;
 
     this.onClick = (event) => {
-      const loginButton = event.target.closest('#welcomeSpotifyBtn');
+      const loginButton = event.target.closest('#welcomeLastfmBtn');
       if (loginButton) {
         window.location.href = '/auth/login';
       }
@@ -100,7 +100,7 @@ export class WelcomeView {
             <p><span class="material-symbols-outlined">location_on</span>${escapeHtml(event.venue || 'Recinto por confirmar')}${event.city ? ` · ${escapeHtml(event.city)}` : ''}</p>
             ${firstArtist ? `<a class="welcome-artist-link" href="${artistHash(firstArtist)}">${escapeHtml(firstArtist)}</a>` : ''}
             <div class="welcome-event-actions">
-              <button class="event-card-ref-btn white" type="button" data-login>Conectar para ver Match</button>
+              <button class="event-card-ref-btn white" type="button" data-login>Conectar Last.fm</button>
               ${ticketUrl ? `<a class="event-card-ref-btn glass" href="${escapeHtml(ticketUrl)}" target="_blank" rel="noopener noreferrer">Entradas</a>` : ''}
             </div>
           </div>

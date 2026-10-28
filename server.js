@@ -10,7 +10,8 @@ import { fileURLToPath } from 'url';
 // Routes
 import authRoutes from './src/routes/auth.js';
 import spotifyRoutes, { handleSpotifyCallback } from './src/routes/spotify.js';
-import { isSpotifyConfigured, getSpotifyRedirectUri } from './src/services/spotify.js';
+import lastfmRoutes from './src/routes/lastfm.js';
+import { isLastfmConfigured } from './src/services/lastfm.js';
 import eventsRoutes from './src/routes/events.js';
 import weatherRoutes from './src/routes/weather.js';
 import artistRoutes from './src/routes/artist.js';
@@ -46,10 +47,7 @@ const contentSecurityPolicy = {
     defaultSrc: ["'self'"],
     scriptSrc: [
       "'self'",
-      // La API iFrame de Spotify evalúa parte de su propio código.
-      "'unsafe-eval'",
-      'https://open.spotify.com',
-      'https://embed-cdn.spotifycdn.com',
+      // Leaflet se carga desde unpkg; no se evalúa código externo.
       'https://unpkg.com'
     ],
     styleSrc: [
@@ -60,9 +58,10 @@ const contentSecurityPolicy = {
     ],
     fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
     imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+    // Las previews de 30 s de Deezer se sirven desde su CDN por HTTPS.
     mediaSrc: ["'self'", 'blob:', 'https:'],
-    connectSrc: ["'self'", 'https://open.spotify.com', 'https://*.spotifycdn.com'],
-    frameSrc: ['https://open.spotify.com', 'https://open.spotifycdn.com'],
+    connectSrc: ["'self'"],
+    frameSrc: ["'none'"],
     objectSrc: ["'none'"],
     baseUri: ["'self'"],
     formAction: ["'self'"],
@@ -149,7 +148,12 @@ app.use('/api/health', healthRoutes);
 app.use('/health', healthRoutes);
 
 app.use('/auth', authLimiter, authRoutes);
-app.use('/api', apiLimiter, spotifyRoutes);
+
+// Last.fm debe montarse antes que Spotify para que /api/session, /api/me y
+// /api/profile/affinity resuelvan al proveedor activo. Las rutas de Spotify se
+// conservan para reactivarlas en el futuro. El rate limiter se ejecuta una sola
+// vez para ambos routers.
+app.use('/api', apiLimiter, lastfmRoutes, spotifyRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/artist', artistRoutes);
@@ -210,15 +214,13 @@ app.use((err, req, res, next) => {
   return res.status(status).type('text').send(message);
 });
 
-if (!isSpotifyConfigured()) {
-  console.warn('⚠️  Spotify no está configurado (claves ausentes o de ejemplo). /auth/login responderá 503.');
-} else {
-  const spotifyRedirect = getSpotifyRedirectUri();
-  const expectedRedirect = `${BASE_URL}/callback`;
-  if (spotifyRedirect !== expectedRedirect) {
-    console.warn(`⚠️  SPOTIFY_REDIRECT_URI (${spotifyRedirect}) no coincide con BASE_URL (${expectedRedirect}).`);
-    console.warn('   El login fallará si esa URL no está registrada exactamente en Spotify Dashboard.');
-  }
+// El login de Spotify está en pausa temporal: su Web API exige Premium en la
+// cuenta dueña. La afinidad se calcula con Last.fm, que es gratuito.
+console.log('ℹ️  Login de Spotify en pausa temporal. Afinidad musical vía Last.fm.');
+
+if (!isLastfmConfigured()) {
+  console.warn('⚠️  LASTFM_API_KEY no está configurada. El login con Last.fm y la afinidad no funcionarán.');
+  console.warn('   Crea una API key gratuita en https://www.last.fm/api/account/create');
 }
 
 const server = app.listen(PORT, HOST, () => {

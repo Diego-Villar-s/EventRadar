@@ -1,6 +1,6 @@
 import { getArtistDetails, getArtistLyrics, searchArtist } from '../api.js';
 import { SegmentedControl } from '../components/segmented.js';
-import { spotifyPlayer } from '../spotify-player.js';
+import { previewPlayer } from '../preview-player.js';
 import {
   avatarUrl,
   emptyState,
@@ -61,7 +61,7 @@ export class ArtistDetailView {
     content.innerHTML = `
       <section class="artist-search-shell">
         <span class="welcome-kicker"><span class="material-symbols-outlined">mic</span> Artistas</span>
-        <h1>Encuentra un artista real en Spotify</h1>
+        <h1>Encuentra un artista real en Deezer</h1>
         <p>Busca por nombre para ver su ficha, sus canciones más escuchadas y su discografía.</p>
         ${message ? `<p class="artist-search-error" role="alert">${escapeHtml(message)}</p>` : ''}
         <form id="artistSearchForm" class="artist-search-form">
@@ -85,7 +85,7 @@ export class ArtistDetailView {
     this.error = result.error || null;
 
     if (!this.artist) {
-      this.renderSearch(this.error?.message || 'No se pudo cargar el artista en Spotify.');
+      this.renderSearch(this.error?.message || 'No se pudo cargar el artista en Deezer.');
       return;
     }
     this.renderArtist();
@@ -96,7 +96,7 @@ export class ArtistDetailView {
     if (!content) return;
     const artist = this.artist;
     const image = safeHttpUrl(artist.image) || avatarUrl([], artist.name);
-    const spotifyUrl = safeHttpUrl(artist.externalUrl);
+    const deezerUrl = safeHttpUrl(artist.externalUrl);
     const genres = (artist.genres || []).slice(0, 4);
     const followers = formatFollowers(artist.followers);
     const hasPopularity = Number.isFinite(Number(artist.popularity));
@@ -107,7 +107,7 @@ export class ArtistDetailView {
         <div class="artist-hero-left">
           <div class="artist-hero-avatar">
             <img src="${escapeHtml(image)}" alt="${escapeHtml(artist.name)}" class="artist-hero-avatar-img">
-            <span class="artist-hero-verified" title="Datos de Spotify"><span class="material-symbols-outlined">verified</span></span>
+            <span class="artist-hero-verified" title="Datos de Deezer"><span class="material-symbols-outlined">verified</span></span>
           </div>
           <div class="artist-hero-info">
             <div class="artist-hero-name-row">
@@ -115,11 +115,11 @@ export class ArtistDetailView {
               ${hasPopularity ? `<span class="artist-hero-badge">Popularidad ${escapeHtml(String(artist.popularity))}/100</span>` : ''}
             </div>
             <div class="artist-hero-meta">
-              ${genres.length ? genres.map((genre) => `<span class="affinity-artist-chip">${escapeHtml(genre)}</span>`).join('') : '<span class="artist-hero-meta-item">Spotify no devolvió géneros.</span>'}
+              ${genres.length ? genres.map((genre) => `<span class="affinity-artist-chip">${escapeHtml(genre)}</span>`).join('') : '<span class="artist-hero-meta-item">Sin géneros disponibles.</span>'}
             </div>
             <div class="artist-hero-meta">
               <span class="artist-hero-meta-item"><span class="material-symbols-outlined">groups</span>${followers} seguidores</span>
-              ${spotifyUrl ? `<a class="artist-hero-meta-item" href="${escapeHtml(spotifyUrl)}" target="_blank" rel="noopener noreferrer"><span class="material-symbols-outlined">open_in_new</span>Abrir en Spotify</a>` : ''}
+              ${deezerUrl ? `<a class="artist-hero-meta-item" href="${escapeHtml(deezerUrl)}" target="_blank" rel="noopener noreferrer"><span class="material-symbols-outlined">open_in_new</span>Abrir en Deezer</a>` : ''}
             </div>
           </div>
         </div>
@@ -172,7 +172,7 @@ export class ArtistDetailView {
       return emptyState({
         icon: 'music_off',
         title: 'Sin canciones disponibles',
-        message: 'Spotify no devolvió canciones populares para este artista.'
+        message: 'Deezer no devolvió canciones populares para este artista.'
       });
     }
 
@@ -192,7 +192,7 @@ export class ArtistDetailView {
           <section class="artist-playlist">
             <div class="artist-playlist-header">
               <span class="material-symbols-outlined">queue_music</span>
-              <span>Top canciones en Spotify</span>
+              <span>Top canciones en Deezer</span>
             </div>
             ${tracks.map((track, index) => `
               <div class="artist-playlist-item ${this.selectedTrack?.id === track.id ? 'active' : ''}" data-track-index="${index}" role="button" tabindex="0">
@@ -205,8 +205,8 @@ export class ArtistDetailView {
                 </div>
                 <div class="artist-playlist-item-right">
                   <span class="artist-playlist-item-duration">${escapeHtml(formatDuration(track.durationMs))}</span>
-                  <button class="artist-playlist-item-play" type="button" data-play-index="${index}" aria-label="Reproducir ${escapeHtml(track.name)}" ${track.uri ? '' : 'disabled title="Spotify no proporcionó una URI reproducible"'}>
-                    <span class="material-symbols-outlined">${track.uri ? 'play_arrow' : 'block'}</span>
+                  <button class="artist-playlist-item-play" type="button" data-play-index="${index}" aria-label="Reproducir vista previa de ${escapeHtml(track.name)}" ${track.previewUrl ? '' : 'disabled title="Deezer no ofrece vista previa para esta canción"'}>
+                    <span class="material-symbols-outlined">${track.previewUrl ? 'play_arrow' : 'block'}</span>
                   </button>
                 </div>
               </div>
@@ -253,7 +253,7 @@ export class ArtistDetailView {
       return emptyState({
         icon: 'album',
         title: 'Sin discografía disponible',
-        message: 'Spotify no devolvió álbumes ni singles para este artista.'
+        message: 'Deezer no devolvió álbumes ni singles para este artista.'
       });
     }
     return `
@@ -292,7 +292,7 @@ export class ArtistDetailView {
         <p>${escapeHtml(description)}</p>
         ${geniusUrl ? `<a class="route-action-btn" href="${escapeHtml(geniusUrl)}" target="_blank" rel="noopener noreferrer"><span class="material-symbols-outlined">open_in_new</span> Leer en Genius</a>` : ''}
         <div class="artist-bio-stats">
-          <span><strong>${formatFollowers(this.artist.followers)}</strong> seguidores en Spotify</span>
+          <span><strong>${formatFollowers(this.artist.followers)}</strong> seguidores en Deezer</span>
           <span><strong>${this.artist.albums?.length || 0}</strong> álbumes y singles</span>
         </div>
       </section>
@@ -335,7 +335,7 @@ export class ArtistDetailView {
     const results = this.container.querySelector('#artistSearchResults');
     if (!results) return;
     if (!name.trim()) return;
-    results.innerHTML = '<div class="view-loading" role="status"><span class="material-symbols-outlined">progress_activity</span><span>Buscando en Spotify…</span></div>';
+    results.innerHTML = '<div class="view-loading" role="status"><span class="material-symbols-outlined">progress_activity</span><span>Buscando en Deezer…</span></div>';
     const response = await searchArtist(name);
     if (response.error) {
       results.innerHTML = emptyState({
@@ -349,7 +349,7 @@ export class ArtistDetailView {
       results.innerHTML = emptyState({
         icon: 'person_search',
         title: 'Sin resultados',
-        message: 'Spotify no encontró artistas con ese nombre.'
+        message: 'Deezer no encontró artistas con ese nombre.'
       });
       return;
     }
@@ -358,7 +358,7 @@ export class ArtistDetailView {
       return `
         <a class="artist-search-result" href="#/artista/${encodeURIComponent(artist.id)}">
           ${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy">` : `<span class="artist-search-avatar"><span class="material-symbols-outlined">person</span></span>`}
-          <span><strong>${escapeHtml(artist.name)}</strong><small>${escapeHtml((artist.genres || []).slice(0, 2).join(' · ') || 'Artista de Spotify')}</small></span>
+          <span><strong>${escapeHtml(artist.name)}</strong><small>${escapeHtml((artist.genres || []).slice(0, 2).join(' · ') || 'Artista de Deezer')}</small></span>
           <span class="material-symbols-outlined">chevron_right</span>
         </a>
       `;
@@ -379,11 +379,11 @@ export class ArtistDetailView {
       event.stopPropagation();
       const index = Number(play.getAttribute('data-play-index'));
       const track = this.artist?.topTracks?.[index];
-      if (track?.uri) {
-        spotifyPlayer.playTrack({
+      if (track?.previewUrl) {
+        previewPlayer.playTrack({
           name: track.name,
           artist: this.artist.name,
-          uri: track.uri,
+          previewUrl: track.previewUrl,
           externalUrl: track.externalUrl
         });
       }

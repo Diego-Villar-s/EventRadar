@@ -1,5 +1,5 @@
-/* Define el callback antes de cargar la API iFrame de Spotify.
-   Así no se pierde la inicialización si el script externo termina primero. */
+/* ARCHIVADO: la app ya no carga la API iFrame de Spotify.
+   El reproductor activo es preview-player.js (previews de Deezer). */
 window.__eventRadarSpotifyApi = null;
 window.onSpotifyIframeApiReady = function onSpotifyIframeApiReady(IFrameAPI) {
   window.__eventRadarSpotifyApi = IFrameAPI;

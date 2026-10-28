@@ -148,7 +148,7 @@ export class MatchView {
     this.events = result.events || [];
     this.meta = result.meta || null;
     this.error = result.error || null;
-    this.sort = this.affinity ? 'match' : (this.origin ? 'distance' : 'date');
+    this.sort = this.hasAffinity() ? 'match' : (this.origin ? 'distance' : 'date');
 
     const scored = this.events.filter((event) => typeof event.matchScore === 'number');
     this.averageMatch = scored.length
@@ -159,6 +159,13 @@ export class MatchView {
     this.renderLocation();
     this.renderFilters();
     this.renderEvents();
+  }
+
+  hasAffinity() {
+    return Boolean(this.affinity && (
+      (this.affinity.topArtists?.length || 0) > 0
+      || (this.affinity.topGenres?.length || 0) > 0
+    ));
   }
 
   renderAffinity() {
@@ -176,9 +183,9 @@ export class MatchView {
               </div>
               <div class="affinity-user-info">
                 <h1>Explora eventos reales</h1>
-                <p class="affinity-empty-text">Conecta Spotify para calcular tu porcentaje de afinidad con cada concierto.</p>
+                <p class="affinity-empty-text">Conecta tu Last.fm para calcular tu porcentaje de afinidad con cada concierto.</p>
                 <button class="affinity-sync-btn" type="button" data-action="login">
-                  <span class="material-symbols-outlined">login</span> Conectar Spotify
+                  <span class="material-symbols-outlined">login</span> Conectar Last.fm
                 </button>
               </div>
             </div>
@@ -196,12 +203,8 @@ export class MatchView {
 
     const artists = this.affinity?.topArtists || [];
     const genres = this.affinity?.topGenres || [];
-    const name = this.user.display_name || this.user.id || 'Tu perfil';
-    const profileBlocked = Boolean(this.user.profileUnavailable);
-    const premiumBlocked = /premium/i.test(this.user.profileError?.spotifyMessage || '');
-    const blockedMessage = premiumBlocked
-      ? 'Spotify exige una suscripción <strong>Premium</strong> en la cuenta dueña de la app (Development Mode). Tu cuenta está conectada, pero Spotify bloquea la lectura de tus artistas. Activa Premium en esa cuenta y espera unas horas; después vuelve a iniciar sesión.'
-      : 'Spotify conectó tu cuenta, pero rechazó la lectura del perfil y de tus artistas (403). Revisa en Spotify Dashboard que tu cuenta esté en <strong>Users and Access</strong>, que la Web API esté habilitada y que el dueño de la app tenga Premium. Después cierra sesión y vuelve a entrar.';
+    const name = this.user.display_name || this.user.displayName || this.user.id || 'Tu perfil';
+    const profileUrl = safeHttpUrl(this.user.url);
     const matchValue = this.averageMatch === null ? '—' : `${this.averageMatch}%`;
     const dash = this.averageMatch === null ? 0 : this.averageMatch;
     const circumference = 2 * Math.PI * 15.9155;
@@ -215,12 +218,11 @@ export class MatchView {
               <div class="affinity-user-badge"><span class="material-symbols-outlined">graphic_eq</span></div>
             </div>
             <div class="affinity-user-info">
-              <h1>${escapeHtml(name)} <span class="affinity-spotify-badge"><span class="affinity-spotify-dot"></span>Spotify conectado</span></h1>
+              <h1>${escapeHtml(name)} <span class="affinity-provider-badge"><span class="affinity-provider-dot"></span>Last.fm conectado</span></h1>
               ${this.affinity
-                ? `<div class="affinity-artists"><span class="affinity-artists-label">Tus artistas:</span>${artists.slice(0, 4).map((artist) => `<span class="affinity-artist-chip">${escapeHtml(artist.name)}</span>`).join('') || '<span class="affinity-artists-label">Spotify no devolvió artistas.</span>'}</div>`
-                : `<p class="affinity-empty-text">${profileBlocked
-                  ? blockedMessage
-                  : 'No se pudo cargar tu afinidad musical. Puedes reintentar sin perder la sesión.'}</p>`}
+                ? `<div class="affinity-artists"><span class="affinity-artists-label">Tus artistas:</span>${artists.slice(0, 4).map((artist) => `<span class="affinity-artist-chip">${escapeHtml(artist.name)}</span>`).join('') || '<span class="affinity-artists-label">Last.fm no devolvió artistas.</span>'}</div>`
+                : `<p class="affinity-empty-text">No se pudo cargar tu afinidad desde Last.fm. Revisa que tu usuario tenga scrobbles y que <strong>LASTFM_API_KEY</strong> esté configurada en el servidor.</p>`}
+              ${profileUrl ? `<a class="affinity-artists-label" href="${escapeHtml(profileUrl)}" target="_blank" rel="noopener noreferrer">Ver perfil en Last.fm</a>` : ''}
             </div>
           </div>
           <div class="affinity-metrics">
@@ -312,7 +314,7 @@ export class MatchView {
       if (this.sort === 'distance' && !this.origin) this.sort = 'date';
       sort.value = this.sort;
       const matchOption = sort.querySelector('option[value="match"]');
-      if (matchOption) matchOption.disabled = !this.affinity;
+      if (matchOption) matchOption.disabled = !this.hasAffinity();
     }
     const search = this.container.querySelector('#eventSearch');
     if (search) search.value = this.search;

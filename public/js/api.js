@@ -165,26 +165,23 @@ export async function getSession() {
 
 function showProfile(user) {
   if (!user) return;
-  const loginBtn = document.getElementById('spotifyLoginBtn');
+  const loginBtn = document.getElementById('lastfmLoginBtn');
   const profileDiv = document.getElementById('navProfile');
   const profileImg = document.getElementById('navProfileImg');
   const profileName = document.getElementById('navProfileName');
 
-  const name = user.display_name || user.id || 'Cuenta de Spotify';
+  const name = user.display_name || user.displayName || user.id || 'Cuenta de Last.fm';
   if (loginBtn) loginBtn.style.display = 'none';
   if (profileDiv) profileDiv.style.display = 'flex';
   if (profileImg) profileImg.src = avatarUrl(user.images, name);
-  if (profileName) profileName.textContent = name;
-
   if (profileName) {
-    profileName.title = user.profileUnavailable
-      ? 'Spotify conectado, pero rechazó la lectura del perfil (403). Revisa Users and Access en Spotify Dashboard.'
-      : name;
+    profileName.textContent = name;
+    profileName.title = name;
   }
 }
 
 export function initAuth() {
-  const loginBtn = document.getElementById('spotifyLoginBtn');
+  const loginBtn = document.getElementById('lastfmLoginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
 
   if (loginBtn) {
@@ -201,32 +198,17 @@ export function initAuth() {
   }
 
   getSession().then((session) => {
-    if (session?.authenticated) {
-      // La sesión ya existe: mostramos la instantánea guardada al hacer login
-      // aunque Spotify tarde o falle al responder /api/me.
-      if (session.user) {
-        showProfile({
-          id: session.user.id,
-          display_name: session.user.displayName,
-          images: session.user.image ? [{ url: session.user.image }] : []
-        });
-      } else {
-        // /me devolvió 403: la cuenta está conectada, pero Spotify no permite
-        // leer el nombre. Mostramos igualmente el perfil para no confundir al
-        // usuario con un "sin conectar".
-        showProfile({
-          display_name: 'Cuenta de Spotify',
-          images: [],
-          profileUnavailable: true
-        });
-      }
-      getCurrentUser(true).then((user) => {
-        if (user) showProfile(user);
+    if (session?.authenticated && session.user) {
+      // La sesión ya existe: mostramos la instantánea guardada al conectar
+      // Last.fm mientras /api/me termina de responder.
+      showProfile({
+        id: session.user.id,
+        display_name: session.user.displayName,
+        images: session.user.image ? [{ url: session.user.image }] : []
       });
-      return;
     }
 
-    getCurrentUser().then((user) => {
+    getCurrentUser(true).then((user) => {
       if (user) showProfile(user);
     });
   });

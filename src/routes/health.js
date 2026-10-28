@@ -1,5 +1,7 @@
 import express from 'express';
-import { getSpotifyRedirectUri } from '../services/spotify.js';
+import { isLastfmConfigured } from '../services/lastfm.js';
+import { isDeezerConfigured } from '../services/deezer.js';
+import { isSpotifyConfigured, getSpotifyRedirectUri } from '../services/spotify.js';
 
 const router = express.Router();
 
@@ -20,9 +22,16 @@ router.get('/', (req, res) => {
     uptimeSeconds: Math.round(process.uptime()),
     environment: process.env.NODE_ENV || 'development',
     integrations: {
-      spotify: configured('SPOTIFY_CLIENT_ID')
-        && configured('SPOTIFY_CLIENT_SECRET')
-        && /^https?:\/\//i.test(getSpotifyRedirectUri()),
+      // Proveedor activo de afinidad musical.
+      lastfm: isLastfmConfigured(),
+      // Catálogo público de artistas, canciones y previews (sin API key).
+      deezer: isDeezerConfigured(),
+      deezerNote: 'API pública sin clave; las llamadas se hacen desde el servidor.',
+      // Spotify queda en pausa temporalmente. Se conserva su configuración
+      // para poder reactivarlo sin perder el trabajo anterior.
+      spotify: false,
+      spotifyPaused: true,
+      spotifyConfigured: isSpotifyConfigured(),
       spotifyRedirectUri: getSpotifyRedirectUri(),
       ticketmaster: configured('TICKETMASTER_API_KEY'),
       openweather: configured('OPENWEATHER_API_KEY'),

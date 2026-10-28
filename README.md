@@ -2,27 +2,31 @@
 
 **Universidad Andina del Cusco - Curso Plataformas para el desarrollo de aplicaciones**
 
-Aplicación web para descubrir eventos musicales, calcular la afinidad con el perfil de Spotify, consultar rutas, revisar el clima del recinto y explorar artistas. El backend de Node.js concentra todas las llamadas a APIs externas; ninguna API key se envía al navegador.
+Aplicación web para descubrir eventos musicales, calcular la afinidad con tu perfil de Last.fm, consultar rutas, revisar el clima del recinto y explorar artistas. El backend de Node.js concentra todas las llamadas a APIs externas; ninguna API key se envía al navegador.
 
 ## Funcionalidades
 
-- Login con Spotify OAuth 2.0 + PKCE y validación de `state`.
-- Perfil de afinidad calculado con los artistas y canciones más escuchadas.
+- Conexión con **Last.fm** mediante nombre de usuario público, sin OAuth ni contraseña.
+- Perfil de afinidad calculado con los artistas, canciones y etiquetas más escuchadas.
 - Match de 0 a 100 % entre el perfil y cada evento.
 - Eventos reales de Ticketmaster con búsqueda, filtros y ordenamiento.
 - Detección de ubicación al entrar y cascada **cerca → país → internacional**: si no hay conciertos en el radio elegido (50–500 km), se muestran los del país y luego la cartelera global, siempre indicando el alcance y la distancia de cada evento.
 - Rutas con Leaflet y OSRM, geocodificación con Nominatim/Photon.
 - Pronóstico del evento con OpenWeatherMap y checklist de equipaje.
 - Biografía con Genius y fragmentos de letras con Musixmatch.
-- Reproductor global con la API iFrame de Spotify y reproducción de tracks reales.
+- Catálogo de artistas con **Deezer**: búsqueda, ficha, top de canciones y discografía.
+- Reproductor global de **previews de 30 segundos** de Deezer usando `<audio>`.
 - Caché en memoria, errores estructurados y estados vacíos honestos.
 - Diseño responsive con navbar global, mini player y navegación móvil.
+
+> **Spotify está temporalmente en pausa.** Su Web API exige una suscripción Premium en la cuenta dueña de la app (Development Mode). El código de Spotify se conserva para reactivarlo, pero el login y la afinidad activos usan Last.fm y Deezer, que son gratuitos.
 
 ## Requisitos
 
 - Node.js 20 o superior.
 - npm 10 o superior.
-- Credenciales de las APIs que quieras habilitar.
+- Una API key gratuita de Last.fm.
+- Credenciales de las demás APIs que quieras habilitar.
 
 ## Instalación local
 
@@ -50,14 +54,17 @@ Edita `.env` con tus credenciales reales. El archivo `.env` está ignorado por G
 | `NODE_ENV` | No | `development` o `production`. |
 | `TRUST_PROXY` | Producción detrás de proxy | `true` para confiar en `X-Forwarded-*` y usar cookies seguras. |
 | `SESSION_SECRET` | Sí en producción | Secreto de 32+ caracteres para firmar la cookie de sesión. |
-| `SPOTIFY_CLIENT_ID` | Sí | Client ID de la app de Spotify. |
-| `SPOTIFY_CLIENT_SECRET` | Sí | Client Secret de Spotify. |
-| `SPOTIFY_REDIRECT_URI` | Recomendada | Debe coincidir exactamente con Spotify Dashboard. Si falta, se usa `${BASE_URL}/callback`. |
-| `SPOTIFY_MARKET` | No | Mercado de Spotify; por defecto `ES`. |
+| `LASTFM_API_KEY` | Sí para afinidad | API key gratuita de Last.fm. |
 | `TICKETMASTER_API_KEY` | Recomendada | Descubrimiento de eventos. |
 | `OPENWEATHER_API_KEY` | Recomendada | Clima y pronóstico. |
 | `GENIUS_ACCESS_TOKEN` | Recomendada | Biografías de artistas. |
 | `MUSIXMATCH_API_KEY` | Recomendada | Fragmentos de letras. |
+| `SPOTIFY_CLIENT_ID` | No (en pausa) | Se conserva para reactivar Spotify. |
+| `SPOTIFY_CLIENT_SECRET` | No (en pausa) | Se conserva para reactivar Spotify. |
+| `SPOTIFY_REDIRECT_URI` | No (en pausa) | Debe coincidir con Spotify Dashboard al reactivarlo. |
+| `SPOTIFY_MARKET` | No (en pausa) | Mercado de Spotify; por defecto `ES`. |
+
+Deezer no necesita variables: su API pública de catálogo es keyless y se consulta desde el servidor.
 
 Genera un secreto de sesión con:
 
@@ -65,51 +72,39 @@ Genera un secreto de sesión con:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-## Configurar Spotify
+## Configurar Last.fm
 
-1. Crea una app en [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
-2. En **Redirect URIs** agrega exactamente:
-   - Desarrollo: `http://127.0.0.1:3000/callback`
-   - Producción: `https://TU_DOMINIO/callback`
-3. Copia `Client ID` y `Client Secret` a `.env`.
-4. Si la app de Spotify está en modo desarrollo, agrega tu cuenta en **Users and Access**.
-5. El callback se atiende en `/callback` y redirige a `/#callback=success` o `/#callback=error`.
+1. Crea una cuenta gratuita en [last.fm/join](https://www.last.fm/join).
+2. Entra a [last.fm/api/account/create](https://www.last.fm/api/account/create) y crea una API key.
+3. Copia la key en `LASTFM_API_KEY` dentro de `.env` (local) o en Render → Environment.
+4. Abre `GET /auth/login` y escribe tu **nombre de usuario público** de Last.fm.
+5. La app valida el usuario con `user.getInfo` y guarda el nombre en la sesión firmada.
 
-En producción, `SPOTIFY_REDIRECT_URI` debe usar el mismo dominio HTTPS de `BASE_URL`.
-Si `SPOTIFY_REDIRECT_URI` no está definido, el servidor lo deriva automáticamente como
-`${BASE_URL}/callback`.
+No se pide contraseña ni se realizan scrobbles: la API solo se usa para leer los artistas, canciones y etiquetas principales del perfil.
 
-### Si el login falla en Render
+Si el usuario no tiene scrobbles, la app muestra estados vacíos honestos en lugar de inventar afinidad.
 
-1. Entra a la app con el mismo dominio que configuraste. Si `SPOTIFY_REDIRECT_URI`
-   apunta a otro host, `/auth/login` muestra una página explicando el desajuste en
-   lugar de enviarte a un error de Spotify.
-2. En Render, `BASE_URL` y `SPOTIFY_REDIRECT_URI` deben ser:
-   - `BASE_URL=https://TU_SERVICIO.onrender.com`
-   - `SPOTIFY_REDIRECT_URI=https://TU_SERVICIO.onrender.com/callback`
-3. En Spotify Dashboard → **Redirect URIs**, agrega exactamente esa misma URL
-   (sin barra final). No basta con el callback de localhost.
-4. Si la app de Spotify está en **Development mode**, solo pueden entrar las cuentas
-   agregadas en **Users and Access**. Para cualquier otra cuenta Spotify devuelve
-   `access_denied` y la app muestra el motivo.
-5. Si el login termina bien pero la app no muestra tu cuenta y en los logs aparece
-   `Spotify profile lookup failed after login: {"status":403,...}`, Spotify autorizó
-   el login pero está bloqueando la Web API. El mensaje exacto de Spotify suele ser
-   `Active premium subscription required for the owner of the app`. Revisa en este orden:
-   - **Premium del dueño**: la cuenta owner de la app debe tener Spotify Premium
-     activo. Es un requisito de Development Mode desde 2026. Tras activarlo, Spotify
-     puede tardar unas horas en desbloquear las peticiones.
-   - **Settings → Web API**: la app debe tener la Web API habilitada.
-   - **Users and Access**: agrega el email exacto de tu cuenta. En Development Mode
-     solo pueden usar la app las cuentas listadas.
-   - Si ya estaba todo bien, puede ser un fallo temporal de Spotify: reintenta más tarde.
-   Después de cambiar algo, cierra sesión y vuelve a entrar para obtener un token nuevo.
-6. Abre `GET /api/spotify/diagnostics` con la sesión iniciada para ver el estado
-   exacto que devuelve Spotify y las pistas de configuración.
-7. Revisa `GET /api/health`: `integrations.spotify` debe ser `true`.
+## Configurar Deezer
 
-El callback guarda una instantánea mínima del perfil en la sesión firmada, así que la
-navbar muestra tu cuenta aunque Spotify tarde o falle al responder `/api/me`.
+Deezer no requiere registro para leer su catálogo público:
+
+- Búsqueda de artistas: `https://api.deezer.com/search/artist`.
+- Ficha, top de canciones y álbumes: `/artist/:id`, `/artist/:id/top`, `/artist/:id/albums`.
+- Previews: MP3 de 30 segundos incluidos en cada track cuando Deezer los ofrece.
+
+Las llamadas se hacen desde el servidor porque la API de Deezer no habilita CORS para el navegador. Las previews se reproducen en el navegador con un elemento `<audio>`.
+
+## Reactivar Spotify en el futuro
+
+El código de Spotify sigue en `src/services/spotify.js` y `src/routes/spotify.js`, y el callback sigue disponible en `/callback`. Para volver a usarlo:
+
+1. Configura `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` y `SPOTIFY_REDIRECT_URI`.
+2. Agrega el redirect exacto en Spotify Dashboard.
+3. Cambia el enlace de login del frontend de `/auth/login` a `/auth/spotify`.
+4. Sustituye la fuente de afinidad en `src/routes/events.js` y `src/routes/spotify.js` por el flujo de Spotify.
+5. Verifica el estado con `GET /api/spotify/diagnostics` y `GET /api/health`.
+
+El handler de Spotify se conserva en `GET /auth/spotify` justamente para no perder la implementación OAuth + PKCE.
 
 ## Otras APIs
 
@@ -127,7 +122,7 @@ npm run dev   # desarrollo con recarga automática
 npm start     # servidor normal
 ```
 
-Abre [http://127.0.0.1:3000](http://127.0.0.1:3000). Usa `127.0.0.1` en local para que coincida con el redirect de Spotify.
+Abre [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
 Comprobación de sintaxis e imports del frontend:
 
@@ -147,29 +142,34 @@ La ruta desconocida vuelve a `#/inicio`.
 
 ## API del backend
 
-- `GET /api/health`: estado del proceso y claves configuradas (sin llamadas externas).
-- `GET /api/session`: si hay sesión de Spotify, la instantánea del perfil y el último
-  error de Spotify (`profileError`), sin llamar a Spotify.
-- `GET /api/spotify/diagnostics`: con sesión iniciada, consulta `/me` en vivo y
-  devuelve el status real de Spotify más pistas de configuración. No expone tokens.
-- `GET /api/events`: listado de Ticketmaster. Acepta `lat`, `lng`, `radius` (1–500),
-  `unit`, `countryCode`, `city`, `keyword`, `size` y `page`. La respuesta incluye
-  `meta.scope` (`nearby`, `country`, `city` o `global`) y `distanceKm` por evento.
+- `GET /api/health`: estado del proceso y claves configuradas (sin llamadas externas). Incluye `integrations.lastfm`, `integrations.deezer` y `integrations.spotifyPaused`.
+- `GET /api/session`: sesión activa de Last.fm (usuario e imagen), sin llamar a Last.fm.
+- `GET /api/me`: perfil normalizado del usuario de Last.fm conectado.
+- `GET /api/profile/affinity`: artistas, canciones y géneros principales del usuario.
+- `POST /api/lastfm/connect`: conecta un usuario de Last.fm por JSON (`{ "username": "..." }`).
+- `POST /api/lastfm/disconnect`: borra la conexión de Last.fm de la sesión.
+- `GET /api/lastfm/status`: indica si Last.fm está configurado y si hay usuario conectado.
+- `GET /api/events`: listado de Ticketmaster. Acepta `lat`, `lng`, `radius` (1–500), `unit`, `countryCode`, `city`, `keyword`, `size` y `page`. La respuesta incluye `meta.scope` (`nearby`, `country`, `city` o `global`) y `distanceKm` por evento.
 - `GET /api/events/:id`: detalle de un evento.
 - `GET /api/weather?lat=...&lng=...`: clima del recinto.
-- `GET /api/artist/:id`: detalle de Spotify.
-- `GET /api/artist/search?name=...`: búsqueda de artistas.
+- `GET /api/artist/:id`: detalle de Deezer (acepta id numérico o nombre).
+- `GET /api/artist/search?name=...`: búsqueda de artistas en Deezer.
+- `GET /api/artist/preview?name=...`: preview de 30 s del artista en Deezer.
+- `GET /api/artist/:id/albums`: discografía desde Deezer.
 - `GET /api/artist/lyrics?artist=...&track=...`: letra o fragmento.
 - `GET /api/geo/route`: ruta OSRM.
 - `GET /api/geo/geocode`: geocodificación.
-- `GET /api/me`, `GET /api/profile/affinity`: datos del usuario autenticado.
-- `GET /auth/login`, `GET /auth/logout`, `GET /callback`.
+- `GET /api/spotify/diagnostics`: diagnóstico del flujo Spotify (en pausa).
+- `GET /auth/login`: página para conectar Last.fm.
+- `POST /auth/lastfm`: valida el usuario y crea la sesión.
+- `GET /auth/spotify`: flujo OAuth de Spotify conservado para reactivarlo.
+- `GET /auth/logout`: cierra la sesión.
+- `GET /callback`: callback OAuth de Spotify (en pausa).
 
 ## Seguridad y producción
 
 - `helmet` con CSP, `frame-ancestors 'none'`, `object-src 'none'` y HSTS en producción.
-  La CSP incluye `'unsafe-eval'` porque la API iFrame de Spotify evalúa su propio código;
-  el código propio de la aplicación no usa `eval`.
+- La CSP ya no necesita `'unsafe-eval'`: no se carga la API iFrame de Spotify.
 - `cookie-session` firmada, `httpOnly`, `SameSite=Lax` y `Secure` en producción. No usa `MemoryStore`.
 - Rate limiting en `/api` y en autenticación.
 - `trust proxy` y cookies seguras detrás de HTTPS.
@@ -180,6 +180,7 @@ La ruta desconocida vuelve a `#/inicio`.
 ### Render
 
 El repositorio incluye `render.yaml` con:
+
 - Build: `npm ci`.
 - Start: `npm start`.
 - Health check: `/api/health`.
@@ -187,10 +188,11 @@ El repositorio incluye `render.yaml` con:
 - Variables secretas marcadas para configurar manualmente.
 
 Después del despliegue configura en Render:
+
 1. `BASE_URL=https://tu-servicio.onrender.com`
-2. `SPOTIFY_REDIRECT_URI=https://tu-servicio.onrender.com/callback`
-3. Las claves de Spotify y de las demás APIs.
-4. Verifica que el Redirect URI esté agregado en Spotify Dashboard.
+2. `LASTFM_API_KEY` con la key gratuita de Last.fm.
+3. Las claves de Ticketmaster, OpenWeather, Genius y Musixmatch.
+4. Opcionalmente, las variables de Spotify si decides reactivarlo.
 
 ## Estructura
 
@@ -199,7 +201,7 @@ eventradar/
 ├── server.js                 # Express, seguridad, sesión y estáticos
 ├── src/
 │   ├── routes/               # Endpoints HTTP
-│   ├── services/             # Integraciones externas
+│   ├── services/             # Integraciones externas (Deezer, Last.fm, etc.)
 │   └── utils/                # Caché, matching y géneros
 ├── public/
 │   ├── css/
@@ -215,10 +217,11 @@ eventradar/
 
 ## Limitaciones conocidas
 
+- Deezer no ofrece preview de 30 s para todo su catálogo; el botón de reproducción se deshabilita cuando no hay fragmento.
+- Last.fm necesita que el usuario tenga scrobbles para calcular una afinidad útil.
 - La instancia pública de OSRM no cubre rutas intercontinentales. La app rechaza rutas cuyo trayecto no llega al destino real y muestra un mensaje en lugar de inventar un recorrido.
 - Genius puede responder `401` si el token no es válido; la ficha del artista indica el error.
 - Musixmatch puede limitar el acceso al fragmento de letras según el plan de la cuenta.
-- El reproductor de Spotify requiere una cuenta con sesión y puede necesitar Spotify Premium para controlar la reproducción según las reglas de Spotify.
 - Las APIs externas pueden fallar o limitar solicitudes; la app no sustituye esos datos con contenido ficticio.
 
 ## Créditos
